@@ -1,0 +1,10 @@
+node_modules
+dist
+*.local
+# disalin otomatis oleh scripts/copy-mediapipe.mjs
+public/mediapipe
+
+# Rahasia / env lokal
+.env
+.env.*
+!.env.example
