@@ -9,9 +9,9 @@ import { HandSkeleton } from './hand-skeleton';
  * Gerak tangan otomatis dimatikan oleh MotionConfig reducedMotion="user".
  */
 const TONES = {
-  brand: { shirt: 'fill-brand-800', hair: 'fill-brand-950' },
-  ink: { shirt: 'fill-brand-950', hair: 'fill-brand-950' },
-  violet: { shirt: 'fill-brand-600', hair: 'fill-brand-900' },
+  brand: { shirt: 'fill-[#2b3a55]', hair: 'fill-[#4a2e1f]' },
+  ink: { shirt: 'fill-ink', hair: 'fill-[#4a2e1f]' },
+  violet: { shirt: 'fill-cap', hair: 'fill-[#4a2e1f]' },
 } as const;
 
 export type SignerTone = keyof typeof TONES;

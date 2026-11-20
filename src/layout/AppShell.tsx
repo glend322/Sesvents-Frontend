@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Bookmark, History, LoaderCircle, MessageCircle, PlaySquare, Plus, Settings, X } from 'lucide-react';
+import { BookOpen, History, LoaderCircle, MessageSquare, PlaySquare, Plus, Settings, X } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import { Avatar } from '@/auth/components/Avatar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -20,10 +20,30 @@ import { cn } from '@/lib/utils';
  * Layar kecil: bar atas + tab bawah. Kiosk tidak ada di menu (tetap bisa dibuka di /kiosk).
  */
 export const NAV = [
-  { to: '/chat', label: 'Tanya LUNAR', short: 'Tanya', icon: MessageCircle },
+  { to: '/chat', label: 'Tanya LUNAR', short: 'Tanya', icon: MessageSquare },
   { to: '/video', label: 'Video Pelajaran', short: 'Video', icon: PlaySquare },
-  { to: '/materi', label: 'Materi Saya', short: 'Materi', icon: Bookmark },
+  { to: '/materi', label: 'Materi Saya', short: 'Materi', icon: BookOpen },
 ] as const;
+
+/**
+ * Bagian kerangka yang boleh disembunyikan halaman di layar kecil (panduan UI): beranda Tanya
+ * memakai banner oranye sendiri (tanpa bar atas), percakapan memakai bar judul sendiri dan
+ * tidak menampilkan tab bawah. Desktop (sidebar) tidak terpengaruh.
+ */
+export type ShellChrome = { mobileHeader: boolean; mobileNav: boolean };
+const DEFAULT_CHROME: ShellChrome = { mobileHeader: true, mobileNav: true };
+type ShellCtx = { setChrome: (c: ShellChrome) => void };
+
+/** Dipanggil halaman untuk mengatur kerangka; kembali ke bawaan saat halaman ditutup. */
+export function useShellChrome({ mobileHeader = true, mobileNav = true }: Partial<ShellChrome>) {
+  const ctx = useOutletContext<ShellCtx | undefined>();
+  const setChrome = ctx?.setChrome;
+  useEffect(() => {
+    if (!setChrome) return;
+    setChrome({ mobileHeader, mobileNav });
+    return () => setChrome(DEFAULT_CHROME);
+  }, [setChrome, mobileHeader, mobileNav]);
+}
 
 const RECENT = 4;
 
@@ -38,6 +58,8 @@ export function AppShell() {
    * peramban seperti di halaman lain.
    */
   const fullHeight = location.pathname.startsWith('/chat');
+  const [chrome, setChrome] = useState<ShellChrome>(DEFAULT_CHROME);
+  const [outletCtx] = useState<ShellCtx>(() => ({ setChrome }));
   const section = '/' + (location.pathname.split('/')[1] ?? '');
   const activeChat = location.pathname.startsWith('/chat/') ? location.pathname.split('/')[2] : null;
 
@@ -88,7 +110,7 @@ export function AppShell() {
   };
 
   return (
-    <div className="min-h-dvh bg-tint lg:grid lg:grid-cols-[16rem_1fr]">
+    <div className="min-h-dvh bg-sand lg:grid lg:grid-cols-[16rem_1fr]">
       {/* ---------- Sidebar (desktop) ---------- */}
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-line bg-white px-3.5 py-5 lg:flex">
         <a href={APP.landingUrl} aria-label="LUNAR, ke halaman utama" className="mb-5 w-fit rounded-xl px-2 transition-opacity hover:opacity-80">
@@ -99,9 +121,9 @@ export function AppShell() {
           ref={newChatBtn}
           type="button"
           onClick={newChat}
-          className="mb-3 flex h-11 items-center gap-2 rounded-2xl border border-line bg-white px-3.5 text-sm font-extrabold text-brand-900 transition-colors hover:border-brand-200 hover:bg-brand-50"
+          className="mb-3 flex h-11 items-center gap-2 rounded-xl border-[1.5px] border-line bg-white px-3.5 text-sm font-bold text-ink transition-colors hover:bg-sand"
         >
-          <span className="grid size-6 place-items-center rounded-lg bg-brand-600 text-white">
+          <span className="grid size-6 place-items-center rounded-md bg-tiger text-ink">
             <Plus className="size-4" aria-hidden="true" />
           </span>
           Chat baru
@@ -114,17 +136,17 @@ export function AppShell() {
               to={n.to}
               className={({ isActive }) =>
                 cn(
-                  'relative flex h-11 items-center gap-3 rounded-2xl px-3.5 text-sm font-bold transition-colors',
-                  isActive ? 'text-brand-900' : 'text-muted hover:bg-tint hover:text-brand-800',
+                  'relative flex h-11 items-center gap-3 rounded-xl px-3.5 text-sm font-semibold transition-colors',
+                  isActive ? 'text-ink' : 'text-muted hover:bg-sand hover:text-ink',
                 )
               }
             >
               {({ isActive }) => (
                 <>
                   {isActive && (
-                    <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-2xl bg-brand-50" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />
+                    <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-xl bg-cream" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />
                   )}
-                  <n.icon className={cn('relative size-[1.15rem]', isActive && 'text-brand-600')} aria-hidden="true" />
+                  <n.icon className={cn('relative size-[1.15rem]', isActive && 'text-tiger-ink')} strokeWidth={1.8} aria-hidden="true" />
                   <span className="relative">{n.label}</span>
                 </>
               )}
@@ -133,7 +155,7 @@ export function AppShell() {
         </nav>
 
         <div className="mt-5 min-h-0 flex-1 border-t border-line pt-4">
-          <p className="mb-1.5 px-3.5 text-[0.6875rem] font-extrabold uppercase tracking-[0.12em] text-muted">Percakapan terakhir</p>
+          <p className="mb-1.5 px-3.5 text-[0.6875rem] font-extrabold uppercase tracking-[0.1em] text-ink">Percakapan terakhir</p>
           {!sessions.loaded ? (
             <div className="flex flex-col gap-1.5 px-1.5" aria-hidden="true">
               {[0, 1, 2].map((i) => (
@@ -198,28 +220,29 @@ export function AppShell() {
       </aside>
 
       {/* ---------- Bar atas (mobile) ---------- */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-white/90 px-4 backdrop-blur-xl lg:hidden">
+      <header
+        className={cn(
+          'sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-white px-4 lg:hidden',
+          !chrome.mobileHeader && 'hidden',
+        )}
+      >
         {/* flex: tanpa ini <a> tetap inline, logonya didudukkan di baseline teks dan tampak naik. */}
         <a href={APP.landingUrl} aria-label="LUNAR, ke halaman utama" className="flex items-center">
           <Logo />
         </a>
-        <div className="flex items-center gap-1.5">
-          <button type="button" onClick={newChat} aria-label="Chat baru" className="grid size-9 place-items-center rounded-xl bg-brand-600 text-white">
-            <Plus className="size-4" aria-hidden="true" />
-          </button>
-          <NavLink to="/profil" aria-label="Profil dan pengaturan">
-            <Avatar name={profile?.name?.split(' ')[0]} photoUrl={profile?.photoUrl} className="size-9" textClassName="text-xs" />
-          </NavLink>
-        </div>
+        <NavLink to="/profil" aria-label="Profil dan pengaturan">
+          <Avatar name={profile?.name} photoUrl={profile?.photoUrl} className="size-9" textClassName="text-xs" />
+        </NavLink>
       </header>
 
       {/* ---------- Isi ---------- */}
       <main
         id="konten"
         className={cn(
-          'mx-auto w-full max-w-[84rem] px-4 pb-28 pt-5 md:px-8 md:pt-8 lg:pb-10',
-          // pb-0: jarak bawah kolom tanya diurus ChatPage (kolomnya menempel ke tepi bawah layar).
-          fullHeight && 'lg:flex lg:min-h-dvh lg:flex-col lg:pb-0 lg:pt-6',
+          'mx-auto w-full max-w-[84rem] px-5 pb-28 pt-5 md:px-8 md:pt-8 lg:pb-10',
+          // Tanya: jarak diurus ChatPage (banner menempel ke tepi layar, kolom tanya ke bawah).
+          fullHeight && 'flex flex-col px-0 pb-0 pt-0 md:px-0 md:pt-0 lg:min-h-dvh lg:px-8 lg:pb-0 lg:pt-6',
+          fullHeight && (chrome.mobileHeader ? 'min-h-[calc(100dvh-3.5rem)]' : 'min-h-dvh'),
         )}
       >
         {/* Hanya animasi masuk (tanpa exit): <Outlet/> selalu merender rute baru, jadi exit akan berkedip. */}
@@ -228,33 +251,38 @@ export function AppShell() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          className={cn(fullHeight && 'lg:flex lg:flex-1 lg:flex-col')}
+          className={cn(fullHeight && 'flex flex-1 flex-col')}
         >
           <ErrorBoundary label="Halaman" resetKey={location.pathname}>
             <Suspense fallback={<PageLoading />}>
-              <Outlet />
+              <Outlet context={outletCtx} />
             </Suspense>
           </ErrorBoundary>
         </motion.div>
       </main>
 
       {/* ---------- Tab bawah (mobile) ---------- */}
-      <nav aria-label="Menu utama" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
+      <nav
+        aria-label="Menu utama"
+        className={cn('fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white pb-[env(safe-area-inset-bottom)] lg:hidden', !chrome.mobileNav && 'hidden')}
+      >
         <ul className="mx-auto grid max-w-lg grid-cols-4">
           {[...NAV, { to: '/riwayat', label: 'Riwayat', short: 'Riwayat', icon: History }].map((n) => (
             <li key={n.to}>
               <NavLink
                 to={n.to}
                 className={({ isActive }) =>
-                  cn('relative flex h-16 flex-col items-center justify-center gap-1 text-[0.6875rem] font-bold', isActive ? 'text-brand-600' : 'text-muted')
+                  cn('relative flex h-16 flex-col items-center justify-center gap-1 text-xs', isActive ? 'font-bold text-ink' : 'font-medium text-muted')
                 }
               >
                 {({ isActive }) => (
                   <>
-                    {isActive && (
-                      <motion.span layoutId="tab-dot" className="absolute top-1.5 h-1 w-6 rounded-full bg-brand-600" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />
-                    )}
-                    <n.icon className="size-5" aria-hidden="true" />
+                    <span className="relative grid h-8 w-14 place-items-center">
+                      {isActive && (
+                        <motion.span layoutId="tab-pill" className="absolute inset-0 rounded-full bg-cream" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />
+                      )}
+                      <n.icon className={cn('relative size-5', isActive && 'text-tiger-ink')} strokeWidth={1.8} aria-hidden="true" />
+                    </span>
                     <span className="max-w-full truncate px-1">{n.short}</span>
                   </>
                 )}

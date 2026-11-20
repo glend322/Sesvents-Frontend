@@ -2,28 +2,46 @@
 
 /* Palet dipakai bersama oleh landing page (src/landing) dan aplikasi. Ukuran teks memakai rem agar tombol "Aa" (perbesar teks) bekerja. */
 @theme {
-  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Lexend: satu keluarga huruf untuk semua teks (panduan ui/00-design-system). */
+  --font-sans: "Lexend Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --color-brand-50: #eeedfe;
-  --color-brand-100: #cecbf6;
-  --color-brand-200: #afa9ec;
-  --color-brand-400: #7f77dd;
-  --color-brand-600: #534ab7;
-  --color-brand-800: #3c3489;
-  --color-brand-900: #26215c;
-  --color-brand-950: #1a1640;
+  /*
+   * Satu warna brand (oranye maskot), sisanya hitam/putih/pasir hangat. Skala brand-* tetap ada
+   * supaya halaman lama ikut berganti tema: 50–200 krem/oranye muda, 400 oranye harimau,
+   * 600 oranye tua (teks & garis oranye di atas putih), 800–950 tinta.
+   */
+  --color-brand-50: #fff2e2;
+  --color-brand-100: #fde3c6;
+  --color-brand-200: #f6c48f;
+  --color-brand-400: #f28a2e;
+  --color-brand-600: #b8500f;
+  --color-brand-800: #3d352d;
+  --color-brand-900: #1f1b16;
+  --color-brand-950: #14110d;
 
-  --color-tint: #f5f4fc;
-  --color-line: #e5e3f5;
-  --color-muted: #6e6a9e;
-  --color-ok: #2e9e5b;
-  --color-ok-ink: #1f7a45;
-  --color-ok-soft: #eaf7ef;
-  --color-rec: #d64545;
-  --color-rec-soft: #fdeeee;
+  --color-tiger: #f28a2e;
+  --color-tiger-ink: #b8500f;
+  --color-ink: #1f1b16;
+  --color-ink-2: #5b544b;
+  --color-sand: #f7f3ec;
+  --color-paper: #ffffff;
+  --color-cream: #fff2e2;
+  --color-cap: #2f6fcc;
+  --color-cap-soft: #e8f0fb;
+  --color-sun: #ffd84d;
+  --color-ragu: #d99a1c;
 
-  --shadow-soft: 0 12px 30px rgba(38, 33, 92, 0.1);
-  --shadow-phone: 0 30px 80px rgba(38, 33, 92, 0.16), 0 6px 18px rgba(38, 33, 92, 0.08);
+  --color-tint: #f7f3ec;
+  --color-line: #ebe5db;
+  --color-muted: #6f675d;
+  --color-ok: #23824a;
+  --color-ok-ink: #1b6a3b;
+  --color-ok-soft: #e6f4ec;
+  --color-rec: #c93a32;
+  --color-rec-soft: #fbeaea;
+
+  --shadow-soft: 0 10px 28px rgba(31, 27, 22, 0.08);
+  --shadow-phone: 0 30px 80px rgba(31, 27, 22, 0.14), 0 6px 18px rgba(31, 27, 22, 0.06);
 }
 
 /* Kontainer konten landing page. */
@@ -40,10 +58,10 @@
     @apply bg-tint font-sans text-brand-900 antialiased;
   }
   ::selection {
-    @apply bg-brand-200 text-brand-900;
+    @apply bg-sun text-ink;
   }
   :focus-visible {
-    outline: 3px solid var(--color-brand-400);
+    outline: 3px solid var(--color-ink);
     outline-offset: 2px;
   }
   button:disabled {

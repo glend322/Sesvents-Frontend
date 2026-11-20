@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, BookOpen, Hand, IdCard, Info, LoaderCircle, Lock, MessageCircle, TriangleAlert } from 'lucide-react';
+import { CircleAlert, Clock, IdCard, Info, LoaderCircle, Lock, Wifi } from 'lucide-react';
+import { TigerMascot } from '@/components/mascot/TigerMascot';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
-import { SignerAvatar } from '@/components/ui/signer-avatar';
 import { APP } from '@/config/app.config';
+import { cn } from '@/lib/utils';
 import { AUTH } from '../auth.config';
 import { readyAccounts, validateCredentialLengths } from '../auth.service';
 import { useAuth } from '../AuthContext';
@@ -13,10 +14,18 @@ import { Field } from '../components/Field';
 import { ForgotPasswordDialog } from './ForgotPasswordDialog';
 
 /**
- * Halaman masuk siswa (ADR-051 D2). Akun dibuat sekolah; siswa masuk dengan NIS + password.
- * Kiri: branding + ilustrasi tablet belajar. Kanan: form. Di layar sempit menumpuk vertikal.
+ * Halaman masuk siswa (ADR-051 D2, panduan ui/01-login). Satu langkah, dua kolom: NIS + password
+ * dari sekolah. Siswa yang sesinya masih valid langsung masuk tanpa melihat layar ini.
+ *
+ * Layar kecil: banner oranye + maskot di atas, form di "sheet" putih. Desktop: banner jadi panel
+ * kiri, form di kanan. Tiga keadaan dari panduan:
+ *  A. isi NIS        kolom aktif bergaris hitam tebal; kotak "Akun siap pakai" hanya di build demo
+ *  B. salah password pesan ramah + sisa percobaan, kolom password merah
+ *  C. terkunci       tombol jadi hitung mundur; error koneksi diletakkan terpisah di bawah
  */
 const hintAccounts = readyAccounts;
+
+const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 
 export function LoginPage() {
   const { login, isAuthenticated, loading, endedReason, clearEndedReason } = useAuth();
@@ -26,7 +35,10 @@ export function LoginPage() {
 
   const [nis, setNis] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
+  /** Pesan salah NIS/password (kotak merah muda di atas form). */
+  const [message, setMessage] = useState<ReactNode>(null);
+  /** Server tak terjangkau (kotak terpisah di bawah). */
+  const [netError, setNetError] = useState(false);
   const [fieldError, setFieldError] = useState<{ nis?: string; password?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const [attempts, setAttempts] = useState(0);
@@ -60,6 +72,7 @@ export function LoginPage() {
   const onEdit = (setter: (v: string) => void, key: 'nis' | 'password') => (value: string) => {
     setter(value);
     if (!locked) setMessage(null);
+    setNetError(false);
     setFieldError((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
     if (endedReason) clearEndedReason();
   };
@@ -71,11 +84,10 @@ export function LoginPage() {
     const id = nis.trim();
     const pass = password;
     const missing: typeof fieldError = {};
-    if (!id) missing.nis = 'NIS wajib diisi.';
-    if (!pass.trim()) missing.password = 'Password wajib diisi.';
+    if (!id) missing.nis = 'Isi NIS-mu dulu, ya.';
+    if (!pass.trim()) missing.password = 'Isi password-mu dulu, ya.';
     if (missing.nis || missing.password) {
       setFieldError(missing);
-      setMessage('Lengkapi NIS dan password dulu, ya.');
       return;
     }
     const tooLong = validateCredentialLengths(id, pass);
@@ -86,6 +98,7 @@ export function LoginPage() {
 
     setSubmitting(true);
     setMessage(null);
+    setNetError(false);
     const result = await login(id, pass);
     setSubmitting(false);
 
@@ -94,25 +107,32 @@ export function LoginPage() {
       return;
     }
 
+    if (result.reason === 'service-error') {
+      setNetError(true);
+      return;
+    }
+
     setPassword('');
     const next = attempts + 1;
     setAttempts(next);
-    if (result.reason === 'service-error') {
-      setMessage('Tidak bisa menghubungi server. Coba lagi sebentar.');
-      return;
-    }
     if (next >= AUTH.maxAttempts) {
+      setFieldError({});
       setLockUntil(Date.now() + AUTH.lockoutMs);
       return;
     }
-    setMessage(`NIS atau password tidak cocok. Sisa percobaan: ${AUTH.maxAttempts - next}.`);
+    setFieldError({ password: 'Cek lagi huruf besar dan kecil.' });
+    setMessage(
+      <>
+        NIS atau password belum cocok. Sisa <b className="font-bold">{AUTH.maxAttempts - next} kali</b> coba lagi.
+      </>,
+    );
   };
 
   // Sesi tersimpan sedang diperiksa / sudah login: jangan tampilkan form sama sekali.
   if (loading || isAuthenticated) {
     return (
-      <div className="grid min-h-dvh place-items-center bg-tint" role="status" aria-live="polite">
-        <span className="flex items-center gap-2 text-sm font-semibold text-muted">
+      <div className="grid min-h-dvh place-items-center bg-sand" role="status" aria-live="polite">
+        <span className="flex items-center gap-2 text-sm text-muted">
           <LoaderCircle className="size-4 anim-spin" aria-hidden="true" /> Menyiapkan akunmu…
         </span>
       </div>
@@ -121,68 +141,73 @@ export function LoginPage() {
 
   const notice =
     endedReason === 'expired'
-      ? 'Sesi sebelumnya berakhir. Silakan masuk kembali.'
+      ? 'Sesi sebelumnya berakhir. Masuk lagi, ya.'
       : endedReason === 'logout'
         ? 'Kamu sudah keluar. Sampai jumpa lagi!'
         : null;
 
+  // Banner dipendekkan saat ada pesan, supaya pesan dan form tetap terlihat tanpa menggulir.
+  const compact = !!message || locked || !!notice;
+
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[1.05fr_1fr]">
-      {/* ---------- Branding ---------- */}
-      <section className="relative isolate flex overflow-hidden bg-white px-6 py-8 md:px-10 md:py-10 lg:px-14 xl:px-20">
-        <div aria-hidden="true" className="absolute -left-28 top-1/3 -z-10 size-[26rem] rounded-full bg-brand-50/80 blur-2xl" />
-        <div aria-hidden="true" className="absolute -right-24 -top-10 -z-10 size-[22rem] rounded-full bg-tint" />
+    <div className="flex min-h-dvh flex-col bg-white lg:grid lg:grid-cols-[1fr_1fr]">
+      {/* ---------- Banner ---------- */}
+      <section
+        className={cn(
+          'relative isolate overflow-hidden bg-tiger px-6 pt-8 lg:flex lg:flex-col lg:px-14 lg:pb-14 lg:pt-12',
+          compact ? 'pb-12' : 'pb-20',
+        )}
+      >
+        <a href={APP.landingUrl} aria-label="LUNAR, ke halaman utama" className="relative z-10 inline-flex rounded-xl">
+          <Logo />
+        </a>
 
-        <div className="mx-auto flex w-full max-w-[32rem] flex-col justify-between gap-8">
-          <a href={APP.landingUrl} aria-label="LUNAR, ke halaman utama" className="w-fit rounded-xl transition-opacity hover:opacity-80">
-            <Logo />
-          </a>
-
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-600">
-              <BookOpen className="size-3.5" aria-hidden="true" /> Platform Edukasi Inklusif
-            </span>
-            <h1 className="mt-4 text-[clamp(2.25rem,4.4vw,3.5rem)] font-extrabold leading-[1] tracking-[-0.055em] text-brand-900">
-              Memahami <br />
-              Tanpa <span className="relative inline-block">Batas<Underline /></span>
-            </h1>
-            <p className="mt-5 max-w-md text-base leading-relaxed text-muted">
-              Materi dengan bahasa isyarat, teks, dan audio. Tanya apa saja ke chatbot LUNAR, lewat ketikan atau isyarat.
-            </p>
-          </div>
-
-          <LoginIllustration />
+        <div className="relative z-10 mt-8 max-w-[16rem] sm:max-w-sm lg:mt-auto lg:max-w-md">
+          <h1 className="text-[1.625rem] font-black uppercase leading-[1.1] tracking-[0.01em] text-ink lg:text-[2.75rem]">
+            {compact ? 'Masuk dulu, yuk' : 'Masuk untuk mulai belajar'}
+          </h1>
+          {!compact && <p className="mt-3 text-base leading-relaxed text-ink lg:text-lg">Pakai NIS dan password dari sekolahmu.</p>}
         </div>
+
+        <TigerMascot
+          className={cn(
+            'absolute right-1 z-0 h-[10.5rem] w-[9rem] lg:bottom-auto lg:right-14 lg:top-28 lg:h-[19rem] lg:w-[16rem]',
+            compact ? '-bottom-20' : '-bottom-10',
+          )}
+        />
       </section>
 
       {/* ---------- Form ---------- */}
-      <section className="flex items-center justify-center bg-tint px-5 py-10 md:px-10">
+      <section className="relative z-10 -mt-6 flex flex-1 flex-col rounded-t-3xl bg-white px-6 pb-6 pt-7 lg:mt-0 lg:items-center lg:justify-center lg:rounded-none lg:px-10">
         <motion.div
-          initial={{ opacity: 0, y: 14 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-[26rem]"
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          className="flex w-full flex-1 flex-col lg:max-w-[26rem] lg:flex-none"
         >
-          <div className="flex flex-col items-center text-center">
-            <span className="rounded-full bg-brand-50 px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-brand-600">Akun siswa</span>
-            <h2 className="mt-3 text-[1.625rem] font-extrabold tracking-[-0.035em]">Masuk untuk mulai belajar</h2>
-            <p className="mt-1.5 text-sm text-muted">Gunakan NIS dan password dari sekolahmu.</p>
+          <div aria-live="polite" role="status">
+            {locked ? (
+              <Alert tone="cream" icon={<Clock />}>
+                Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi.
+              </Alert>
+            ) : message ? (
+              <Alert tone="error" icon={<CircleAlert />}>
+                {message}
+              </Alert>
+            ) : notice ? (
+              <Alert tone="cream" icon={<Info />}>
+                {notice}
+              </Alert>
+            ) : null}
           </div>
 
-          {notice && (
-            <p role="status" className="mt-5 flex items-start gap-2 rounded-2xl bg-white p-3.5 text-sm text-brand-800">
-              <Info className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />
-              {notice}
-            </p>
-          )}
-
-          <form onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-4">
+          <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
             <Field
               label="NIS (Nomor Induk Siswa)"
-              icon={<IdCard className="size-[1.1rem]" />}
+              icon={<IdCard className="size-5" strokeWidth={1.8} />}
               value={nis}
               onChange={(e) => onEdit(setNis, 'nis')(e.target.value)}
-              placeholder="mis. 0012345678"
+              placeholder="Tulis NIS-mu"
               autoComplete="username"
               inputMode="numeric"
               spellCheck={false}
@@ -191,7 +216,7 @@ export function LoginPage() {
             <Field
               label="Password"
               password
-              icon={<Lock className="size-[1.1rem]" />}
+              icon={<Lock className="size-5" strokeWidth={1.8} />}
               value={password}
               onChange={(e) => onEdit(setPassword, 'password')(e.target.value)}
               placeholder="Masukkan password"
@@ -199,70 +224,64 @@ export function LoginPage() {
               error={fieldError.password}
             />
 
-            <div aria-live="polite" role="status" className="min-h-5">
-              {message && (
-                <p className="flex items-start gap-1.5 text-sm font-semibold text-rec">
-                  <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                  {message}
-                </p>
-              )}
-              {locked && (
-                <p className="flex items-start gap-1.5 text-sm font-semibold text-rec">
-                  <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                  Terlalu banyak percobaan. Tunggu {lockLeft} detik lagi.
-                </p>
-              )}
-            </div>
-
-            <Button type="submit" size="lg" disabled={submitting || locked} className="w-full">
-              {submitting ? (
+            <Button type="submit" size="lg" disabled={submitting || locked} className="mt-1 w-full text-base">
+              {locked ? (
+                <span className="tabular-nums">Coba lagi dalam {mmss(lockLeft)}</span>
+              ) : submitting ? (
                 <>
                   <LoaderCircle className="anim-spin" aria-hidden="true" /> Memeriksa…
                 </>
               ) : (
-                <>
-                  Masuk <ArrowRight aria-hidden="true" />
-                </>
+                'Masuk'
               )}
             </Button>
 
-            <button
-              ref={forgotRef}
-              type="button"
-              onClick={() => setForgotOpen(true)}
-              className="mx-auto rounded-lg px-2 py-1 text-sm font-semibold text-brand-600 underline-offset-4 transition-colors hover:text-brand-900 hover:underline"
-            >
-              Lupa password?
-            </button>
+            {!compact && (
+              <button
+                ref={forgotRef}
+                type="button"
+                onClick={() => setForgotOpen(true)}
+                className="mx-auto rounded-lg px-2 py-1 text-[0.9375rem] font-semibold text-tiger-ink underline-offset-4 hover:underline"
+              >
+                Lupa password? Tanya wali kelas
+              </button>
+            )}
           </form>
 
-          {hintAccounts.length > 0 && (
-            <div className="mt-7 rounded-2xl border border-dashed border-brand-200 bg-white/70 p-4">
-              <p className="text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-brand-600">Akun siap pakai</p>
-              <p className="mt-1 text-xs text-muted">
-                Ketuk akun untuk mengisi form.
-              </p>
-              <ul className="mt-2.5 flex flex-col gap-1.5">
-                {hintAccounts.map((c) => (
-                  <li key={c.nis}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNis(c.nis);
-                        setPassword(c.password);
-                        setMessage(null);
-                        setFieldError({});
-                      }}
-                      className="flex w-full items-center justify-between gap-3 rounded-xl bg-tint px-3 py-2 text-xs transition-colors hover:bg-brand-50"
-                    >
-                      <span className="font-bold text-brand-900">NIS {c.nis}</span>
-                      <span className="font-mono text-muted">{c.password}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <div className="mt-auto flex flex-col gap-3 pt-8">
+            {netError && (
+              <Alert tone="error" icon={<Wifi />} role="alert">
+                Tidak bisa menghubungi server. Cek internet, lalu coba lagi.
+              </Alert>
+            )}
+
+            {hintAccounts.length > 0 && !compact && !netError && (
+              <div className="rounded-2xl border-[1.5px] border-dashed border-[#d9d1c5] px-4 py-3.5">
+                <p className="text-xs font-bold uppercase tracking-[0.1em] text-muted">Akun siap pakai</p>
+                <ul className="mt-2 flex flex-col gap-2">
+                  {hintAccounts.map((c) => (
+                    <li key={c.nis} className="flex items-center justify-between gap-3">
+                      <span className="text-[0.9375rem] font-semibold tabular-nums text-ink">{c.nis}</span>
+                      <Button
+                        variant="outline-tiger"
+                        size="sm"
+                        className="h-10 px-5 text-sm"
+                        onClick={() => {
+                          setNis(c.nis);
+                          setPassword(c.password);
+                          setMessage(null);
+                          setNetError(false);
+                          setFieldError({});
+                        }}
+                      >
+                        Pakai
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </motion.div>
       </section>
 
@@ -277,47 +296,32 @@ export function LoginPage() {
   );
 }
 
-/** Garis tangan di bawah kata terakhir tagline (dekoratif). */
-function Underline() {
+function Alert({
+  tone,
+  icon,
+  children,
+  role,
+}: {
+  tone: 'error' | 'cream';
+  icon: ReactNode;
+  children: ReactNode;
+  role?: 'alert';
+}) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 200 18" className="absolute -bottom-2 left-0 h-3 w-full text-brand-400" preserveAspectRatio="none">
-      <motion.path
-        d="M3 12 C 50 4, 110 4, 197 10"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="5"
-        strokeLinecap="round"
-        initial={{ pathLength: 0 }}
-        animate={{ pathLength: 1 }}
-        transition={{ delay: 0.4, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-      />
-    </svg>
-  );
-}
-
-/** Tablet belajar dengan avatar penanda isyarat (placeholder) + dua kartu fitur. Dekoratif. */
-function LoginIllustration() {
-  return (
-    <div aria-hidden="true" className="relative mx-auto w-full max-w-[26rem] select-none lg:mx-0">
-      <motion.div
-        animate={{ y: [0, -6, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-        className="rounded-[1.75rem] bg-brand-900 p-2 shadow-soft"
-      >
-        <div className="relative aspect-[16/10] overflow-hidden rounded-[1.3rem] bg-gradient-to-br from-brand-100 via-brand-50 to-white">
-          <SignerAvatar className="absolute inset-x-[18%] bottom-0 top-[8%]" />
-          <span className="absolute left-3 top-3 rounded-full bg-brand-900/85 px-2 py-0.5 text-[0.625rem] font-bold tabular-nums text-white">00:45</span>
-          <p className="absolute inset-x-3 bottom-3 rounded-xl bg-brand-900/85 px-3 py-2 text-center text-[0.6875rem] font-semibold text-white">
-            Hari ini kita akan belajar tentang siklus air.
-          </p>
-        </div>
-      </motion.div>
-      <div className="absolute -right-3 -top-4 flex items-center gap-1.5 rounded-2xl bg-white px-3 py-2 text-xs font-bold text-brand-800 shadow-soft">
-        <Hand className="size-3.5 text-brand-600" /> Video isyarat
-      </div>
-      <div className="absolute -bottom-4 -left-3 flex items-center gap-1.5 rounded-2xl bg-white px-3 py-2 text-xs font-bold text-brand-800 shadow-soft">
-        <MessageCircle className="size-3.5 text-brand-600" /> Chatbot AI
-      </div>
-    </div>
+    <motion.p
+      role={role}
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn(
+        'mb-5 flex items-start gap-3 rounded-2xl px-4 py-3.5 text-[0.9375rem] leading-snug [&_svg]:mt-0.5 [&_svg]:size-5 [&_svg]:shrink-0',
+        tone === 'error' ? 'bg-rec-soft text-[#9b2a23]' : 'bg-cream text-ink',
+        role === 'alert' && 'mb-0',
+      )}
+    >
+      <span aria-hidden="true" className="contents">
+        {icon}
+      </span>
+      <span>{children}</span>
+    </motion.p>
   );
 }

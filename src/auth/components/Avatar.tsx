@@ -29,7 +29,7 @@ export function Avatar({
   return (
     <span
       aria-hidden="true"
-      className={cn('grid shrink-0 place-items-center overflow-hidden rounded-full bg-brand-100 font-extrabold text-brand-800', className)}
+      className={cn('grid shrink-0 place-items-center overflow-hidden rounded-full bg-ink font-bold text-white', className)}
     >
       {showPhoto ? (
         <img
@@ -42,7 +42,7 @@ export function Avatar({
       ) : initials ? (
         <span className={textClassName}>{initials}</span>
       ) : (
-        <UserRound className="size-1/2 text-brand-600" />
+        <UserRound className="size-1/2 text-white" />
       )}
     </span>
   );

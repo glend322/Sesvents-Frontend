@@ -1,16 +1,70 @@
-import { useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { FileText, Hand, LoaderCircle, MapPin, Paperclip, Play, RotateCcw, Send, TriangleAlert, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowUp, Captions, CaptionsOff, FileText, Hand, LoaderCircle, MapPin, Play, Plus, RotateCcw, TriangleAlert, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LogoMark } from '@/components/ui/logo';
 import { clock } from '@/data/materi';
+import { useSettings } from '@/state/SettingsContext';
 import { cn } from '@/lib/utils';
 import { AnswerSign } from './AnswerSign';
 import type { ChatDocument } from './chat.service';
 import { SignCapture } from './SignCapture';
 import type { ViewMessage } from './useChat';
 
+/*
+ * Bagian percakapan Tanya LUNAR (panduan ui/02 & ui/03): gelembung siswa hitam, jawaban LUNAR di
+ * kartu putih + kartu isyarat + tombol Dengarkan/Caption, kolom tanya berbentuk pil
+ * (+ PDF · teks · Isyarat · kirim).
+ */
+
 const time = (iso: string) => new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+// ---------------------------------------------------------------- teks jawaban
+
+/** **tebal** → <strong>. Hanya itu; jawaban lain tampil apa adanya. */
+function inline(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
+      <strong key={i} className="font-bold">
+        {part.slice(2, -2)}
+      </strong>
+    ) : (
+      <Fragment key={i}>{part}</Fragment>
+    ),
+  );
+}
+
+/**
+ * Jawaban pendek & bernomor: baris "1. …" nomornya ditebalkan, "- …" jadi titik. Baris kosong =
+ * jarak antar paragraf.
+ */
+export function AnswerText({ text, className }: { text: string; className?: string }) {
+  const lines = text.replace(/\r/g, '').split('\n');
+  return (
+    <div className={cn('flex flex-col gap-1 text-[0.9375rem] leading-relaxed text-ink', className)}>
+      {lines.map((raw, i) => {
+        const line = raw.trimEnd();
+        if (!line.trim()) return <span key={i} className="h-1.5" aria-hidden="true" />;
+        const num = line.match(/^\s*(\d+)[.)]\s+(.*)$/);
+        if (num)
+          return (
+            <p key={i}>
+              <b className="font-bold">{num[1]}.</b> {inline(num[2])}
+            </p>
+          );
+        const dot = line.match(/^\s*[-*•]\s+(.*)$/);
+        if (dot)
+          return (
+            <p key={i} className="flex gap-2">
+              <span aria-hidden="true">•</span>
+              <span>{inline(dot[1])}</span>
+            </p>
+          );
+        return <p key={i}>{inline(line.replace(/^#+\s*/, ''))}</p>;
+      })}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------- pesan
 
@@ -38,47 +92,43 @@ export function Bubble({
   /** Gelembung di kolom sempit (panel tanya samping video): caption di bawah animasi isyarat. */
   compact?: boolean;
 }) {
+  const settings = useSettings();
+
   if (m.role === 'user') {
     const t = m.videoTSec;
     return (
       <motion.li
         layout="position"
-        initial={{ opacity: 0, y: 12, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
         className="flex max-w-[85%] flex-col items-end self-end"
       >
-        <span className="mb-1 flex flex-wrap items-center justify-end gap-1.5 text-[0.6875rem] font-bold text-muted">
-          {t != null && (
-            <button
-              type="button"
-              onClick={() => onSeek?.(t)}
-              disabled={!onSeek}
-              className="flex items-center gap-1 rounded-full bg-[#FFF4CC] px-2 py-0.5 text-[#7A5A00] enabled:hover:bg-[#FFEBA3]"
-              aria-label={`Ditanyakan di ${clock(t)}`}
-            >
-              <MapPin className="size-3" aria-hidden="true" /> {clock(t)}
-            </button>
-          )}
+        {t != null && (
+          <button
+            type="button"
+            onClick={() => onSeek?.(t)}
+            disabled={!onSeek}
+            className="mb-1 flex items-center gap-1 rounded-md bg-cream px-2 py-0.5 text-xs font-semibold text-tiger-ink enabled:hover:bg-brand-100"
+            aria-label={`Ditanyakan di ${clock(t)}`}
+          >
+            <MapPin className="size-3" aria-hidden="true" /> {clock(t)}
+          </button>
+        )}
+        <div className={cn('rounded-[20px] bg-ink px-5 py-3 text-white', m.status === 'sending' && 'opacity-75', m.status === 'failed' && 'bg-ink-2')}>
           {m.inputMode === 'sign' && (
-            <span className="flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-brand-600">
-              <Hand className="size-3" aria-hidden="true" /> via isyarat
+            <span className="mb-0.5 flex items-center gap-1.5 text-[0.8125rem] text-white/75">
+              <Hand className="size-3.5" aria-hidden="true" /> dari isyarat
             </span>
           )}
-          {m.status === 'sending' ? 'Mengirim…' : m.status === 'failed' ? <span className="text-rec">Gagal terkirim</span> : time(m.createdAt)}
+          <p className="whitespace-pre-wrap text-base leading-snug">{m.content}</p>
+        </div>
+        <span className="mt-1 px-1 text-xs text-muted">
+          {m.status === 'sending' ? 'Mengirim…' : m.status === 'failed' ? <span className="text-rec">Belum terkirim</span> : time(m.createdAt)}
         </span>
-        <p
-          className={cn(
-            'whitespace-pre-wrap rounded-2xl rounded-tr-md px-4 py-2.5 text-[0.9375rem] font-semibold leading-relaxed text-white',
-            m.status === 'failed' ? 'bg-brand-400' : 'bg-brand-600',
-            m.status === 'sending' && 'opacity-80',
-          )}
-        >
-          {m.content}
-        </p>
         {m.status === 'failed' && (
-          <span className="mt-1.5 flex gap-1.5">
+          <span className="mt-1.5 flex gap-2">
             <Button size="sm" variant="outline" onClick={onRetry}>
               <RotateCcw /> Kirim ulang
             </Button>
@@ -90,64 +140,71 @@ export function Bubble({
       </motion.li>
     );
   }
+
   return (
     <motion.li
       layout="position"
-      initial={{ opacity: 0, y: 12, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="flex w-full max-w-[94%] gap-2.5 self-start sm:max-w-[82%]"
+      className={cn('flex w-full flex-col self-start', compact ? 'max-w-full' : 'max-w-[34rem]')}
     >
-      <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-brand-50">
-        <LogoMark className="size-5" />
+      <span className="mb-2 flex items-center gap-2 text-[0.9375rem] font-bold tracking-[0.02em] text-ink">
+        <LogoMark className="size-7 rounded-lg" /> LUNAR
       </span>
-      <div className="min-w-0 flex-1">
-        <div className="rounded-2xl rounded-tl-md border border-line bg-white px-4 py-3">
-          <p className="whitespace-pre-wrap text-[0.9375rem] leading-relaxed text-brand-900">{m.content}</p>
-          <AnswerSign text={m.content} autoPlay={autoPlay} compact={compact} />
-        </div>
-        <div className="mt-1 flex flex-wrap items-center gap-1 px-1">
-          <button
-            type="button"
-            onClick={onSpeak}
-            className="flex items-center gap-1 rounded-lg px-1.5 py-1 text-[0.6875rem] font-bold text-brand-600 transition-colors hover:bg-brand-50"
-          >
-            {speaking ? <VolumeX className="size-3.5" aria-hidden="true" /> : <Volume2 className="size-3.5" aria-hidden="true" />}
-            {speaking ? 'Hentikan' : 'Dengarkan'}
-          </button>
-          {rewatch && (
-            <button
-              type="button"
-              onClick={rewatch.onClick}
-              className="flex items-center gap-1 rounded-lg px-1.5 py-1 text-[0.6875rem] font-bold text-brand-600 transition-colors hover:bg-brand-50"
-            >
-              <Play className="size-3" fill="currentColor" aria-hidden="true" /> Lihat lagi di {clock(rewatch.t)}
-            </button>
-          )}
-          <span className="text-[0.6875rem] text-muted">· {time(m.createdAt)}</span>
-        </div>
+      <div className="rounded-[20px] border border-line bg-white px-5 py-4">
+        <AnswerText text={m.content} />
+      </div>
+      <AnswerSign text={m.content} autoPlay={autoPlay} compact={compact} speech={{ speaking, onSpeak }} />
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Chip onClick={onSpeak} pressed={speaking}>
+          {speaking ? <VolumeX aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
+          {speaking ? 'Hentikan' : 'Dengarkan'}
+        </Chip>
+        <Chip onClick={() => settings.update({ captions: !settings.captions })} pressed={settings.captions} label={settings.captions ? 'Caption menyala' : 'Caption mati'}>
+          {settings.captions ? <Captions aria-hidden="true" /> : <CaptionsOff aria-hidden="true" />}
+          Caption
+        </Chip>
+        {rewatch && (
+          <Chip onClick={rewatch.onClick}>
+            <Play fill="currentColor" aria-hidden="true" /> Lihat lagi di {clock(rewatch.t)}
+          </Chip>
+        )}
+        <span className="text-xs text-muted">{time(m.createdAt)}</span>
       </div>
     </motion.li>
   );
 }
 
+function Chip({ children, onClick, pressed, label }: { children: ReactNode; onClick: () => void; pressed?: boolean; label?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={pressed}
+      aria-label={label}
+      className="flex h-11 items-center gap-2 rounded-xl border-[1.5px] border-line bg-white px-4 text-[0.9375rem] font-semibold text-ink transition-colors hover:bg-sand [&_svg]:size-[1.15rem]"
+    >
+      {children}
+    </button>
+  );
+}
+
 export function Typing() {
   return (
-    <motion.li initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-center gap-2.5 self-start" role="status">
-      <span className="grid size-8 place-items-center rounded-full bg-brand-50">
-        <LogoMark className="size-5" />
-      </span>
-      <span className="flex items-center gap-1 rounded-2xl rounded-tl-md border border-line bg-white px-4 py-3.5">
+    <motion.li initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-center gap-3 self-start" role="status">
+      <LogoMark className="size-7 rounded-lg" />
+      <span className="text-[0.9375rem] text-ink-2">LUNAR sedang menulis jawaban</span>
+      <span className="flex items-center gap-1" aria-hidden="true">
         {[0, 1, 2].map((i) => (
           <motion.i
             key={i}
-            className="block size-1.5 rounded-full bg-brand-400"
-            animate={{ y: [0, -4, 0], opacity: [0.5, 1, 0.5] }}
+            className="block size-2 rounded-full bg-tiger"
+            animate={{ opacity: [0.3, 1, 0.3] }}
             transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15 }}
           />
         ))}
-        <span className="sr-only">LUNAR sedang menulis jawaban</span>
       </span>
     </motion.li>
   );
@@ -160,7 +217,7 @@ export function ErrorNote({ text, onClose }: { text: string; onClose: () => void
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      className="mb-2 flex items-start gap-2 rounded-2xl bg-rec-soft px-3.5 py-2.5 text-sm font-semibold text-rec"
+      className="mb-2 flex items-start gap-2.5 rounded-2xl bg-rec-soft px-4 py-3 text-sm text-[#9b2a23]"
     >
       <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
       <span className="flex-1">{text}</span>
@@ -180,16 +237,16 @@ export function DocumentChips({ docs, uploading }: { docs: ChatDocument[]; uploa
           key={d.id}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex max-w-[16rem] items-center gap-1.5 rounded-full border border-line bg-white py-1 pl-2 pr-3 text-xs font-bold text-brand-800"
+          className="flex max-w-[16rem] items-center gap-1.5 rounded-[10px] border border-line bg-white py-1.5 pl-2 pr-3 text-xs font-semibold text-ink"
           title={`${d.filename} · ${d.pageCount} halaman`}
         >
           <FileText className="size-3.5 shrink-0 text-rec" aria-hidden="true" />
           <span className="truncate">{d.filename}</span>
-          <span className="shrink-0 font-semibold text-muted">· {d.pageCount} hlm</span>
+          <span className="shrink-0 font-normal text-muted">· {d.pageCount} hlm</span>
         </motion.li>
       ))}
       {uploading && (
-        <li className="flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-600" role="status">
+        <li className="flex items-center gap-1.5 rounded-[10px] bg-cream px-3 py-1.5 text-xs font-semibold text-ink" role="status">
           <LoaderCircle className="size-3.5 anim-spin" aria-hidden="true" /> Membaca PDF…
         </li>
       )}
@@ -199,7 +256,7 @@ export function DocumentChips({ docs, uploading }: { docs: ChatDocument[]; uploa
 
 // ---------------------------------------------------------------- input
 
-/** Tombol "Pakai isyarat": melambai sekali saat muncul, bergoyang saat disorot. */
+/** Tombol "Isyarat" (khusus isyarat = biru): melambai sekali saat muncul. */
 function SignButton({ open, onToggle, wave, compact }: { open: boolean; onToggle: () => void; wave: boolean; compact?: boolean }) {
   const reduced = useReducedMotion();
   return (
@@ -207,14 +264,11 @@ function SignButton({ open, onToggle, wave, compact }: { open: boolean; onToggle
       type="button"
       onClick={onToggle}
       aria-pressed={open}
-      aria-label={open ? 'Tutup kamera isyarat' : 'Pakai isyarat'}
+      aria-label="Bertanya dengan isyarat"
       title="Tunjukkan isyarat ke kamera"
       whileHover="wiggle"
       whileTap={{ scale: 0.95 }}
-      className={cn(
-        'flex h-11 shrink-0 items-center gap-1.5 rounded-2xl px-3.5 text-sm font-extrabold transition-colors',
-        open ? 'bg-brand-600 text-white' : 'bg-brand-50 text-brand-800 hover:bg-brand-100',
-      )}
+      className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-cap-soft px-3.5 text-[0.9375rem] font-semibold text-cap transition-colors hover:bg-[#dbe7f8]"
     >
       <motion.span
         className="inline-flex origin-[70%_85%]"
@@ -223,9 +277,9 @@ function SignButton({ open, onToggle, wave, compact }: { open: boolean; onToggle
         transition={{ duration: 1.3, delay: 0.6, ease: 'easeInOut' }}
         variants={reduced ? undefined : { wiggle: { rotate: [0, 18, -10, 12, 0], transition: { duration: 0.6 } } }}
       >
-        <Hand className="size-[1.15rem]" aria-hidden="true" />
+        <Hand className="size-[1.15rem]" strokeWidth={1.8} aria-hidden="true" />
       </motion.span>
-      {!compact && <span>{open ? 'Tutup' : 'Pakai isyarat'}</span>}
+      {!compact && <span>Isyarat</span>}
     </motion.button>
   );
 }
@@ -238,7 +292,7 @@ export function Composer({
   uploading,
   onUpload,
   chip,
-  placeholder = 'Tulis pertanyaanmu…',
+  placeholder = 'Tanya apa saja…',
   onTyping,
   waveOnMount = false,
   compact = false,
@@ -264,16 +318,18 @@ export function Composer({
 }) {
   const [usedSign, setUsedSign] = useState(false);
   const [signOpen, setSignOpen] = useState(false);
+  const [multiline, setMultiline] = useState(false);
   const ownRef = useRef<HTMLTextAreaElement>(null);
   const ref = externalRef ?? ownRef;
   const file = useRef<HTMLInputElement>(null);
 
-  // textarea tumbuh mengikuti isi (maks 6 baris)
+  // textarea tumbuh mengikuti isi (maks ±6 baris); pil berubah jadi kotak bundar bila > 1 baris.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    setMultiline(!!value && el.scrollHeight > 52);
   }, [value, ref]);
 
   const submit = async () => {
@@ -291,36 +347,91 @@ export function Composer({
       void submit();
     }
   };
-  const addWord = (w: string) => {
-    setUsedSign(true);
+
+  /** "Kirim N kata" dari sheet isyarat: kalimat isyarat (+ ketikan yang sudah ada) dikirim langsung. */
+  const sendSign = async (sentence: string) => {
+    const text = value.trim() ? `${value.trimEnd()} ${sentence}` : sentence;
+    const ok = await onSend(text, 'sign');
+    if (ok) {
+      setUsedSign(false);
+      setSignOpen(false);
+    }
+  };
+  /** "Ketik juga": kata isyarat dipindah ke kolom ketik untuk ditambah. */
+  const typeSign = (sentence: string) => {
+    if (sentence) {
+      setUsedSign(true);
+      onChange(value.trim() ? `${value.trimEnd()} ${sentence}` : sentence);
+    }
     onTyping?.(true);
-    onChange(value.trim() ? `${value.trimEnd()} ${w}` : w);
+    window.setTimeout(() => ref.current?.focus(), 50);
   };
 
   return (
     <div>
-      <AnimatePresence>{signOpen && <SignCapture onWord={addWord} onClose={() => setSignOpen(false)} />}</AnimatePresence>
+      <AnimatePresence>
+        {signOpen && <SignCapture onSend={(s) => void sendSign(s)} onType={typeSign} onClose={() => {
+              setSignOpen(false);
+              ref.current?.focus();
+            }}
+            sending={sending}
+          />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {chip && (
+          <motion.span
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="mb-1.5 ml-3 inline-flex items-center gap-1 rounded-md bg-cream py-0.5 pl-2 pr-1 text-xs font-semibold text-tiger-ink"
+          >
+            <MapPin className="size-3" aria-hidden="true" /> {chip.label}
+            <button type="button" onClick={chip.onRemove} aria-label="Hapus penanda waktu" className="grid size-5 place-items-center rounded hover:bg-brand-100">
+              <X className="size-3" aria-hidden="true" />
+            </button>
+          </motion.span>
+        )}
+      </AnimatePresence>
+      {usedSign && value.trim() && (
+        <p className="mb-1.5 ml-3 flex items-center gap-1 text-xs font-semibold text-cap">
+          <Hand className="size-3.5" aria-hidden="true" /> Berisi kata dari isyarat
+        </p>
+      )}
       <form
         onSubmit={onSubmit}
-        className="rounded-[1.6rem] border border-line bg-white p-1.5 shadow-[0_10px_30px_rgba(38,33,92,0.07)] transition-colors focus-within:border-brand-200"
+        className={cn(
+          'flex items-end gap-1.5 border-[1.5px] border-line bg-white p-1.5 transition-colors focus-within:border-ink',
+          multiline ? 'rounded-[1.6rem]' : 'rounded-full',
+        )}
       >
-        <AnimatePresence>
-          {chip && (
-            <motion.span
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="ml-2 mt-1.5 inline-flex items-center gap-1 rounded-full bg-[#FFF4CC] py-0.5 pl-2 pr-1 text-xs font-bold text-[#7A5A00]"
+        {onUpload && (
+          <>
+            <input
+              ref={file}
+              type="file"
+              accept="application/pdf,.pdf"
+              className="sr-only"
+              tabIndex={-1}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (f) onUpload(f);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => file.current?.click()}
+              disabled={uploading}
+              aria-label="Tambah materi PDF"
+              title="Tambah materi PDF (maks 10 halaman)"
+              className="grid size-11 shrink-0 place-items-center rounded-full bg-sand text-ink transition-colors hover:bg-line disabled:opacity-50"
             >
-              <MapPin className="size-3" aria-hidden="true" /> {chip.label}
-              <button type="button" onClick={chip.onRemove} aria-label="Hapus penanda waktu" className="grid size-5 place-items-center rounded-full hover:bg-[#FFE68A]">
-                <X className="size-3" aria-hidden="true" />
-              </button>
-            </motion.span>
-          )}
-        </AnimatePresence>
+              {uploading ? <LoaderCircle className="size-5 anim-spin" aria-hidden="true" /> : <Plus className="size-5" strokeWidth={1.8} aria-hidden="true" />}
+            </button>
+          </>
+        )}
         <label htmlFor="chat-input" className="sr-only">
-          Tulis pesan
+          Tulis pertanyaan
         </label>
         <textarea
           id="chat-input"
@@ -337,42 +448,18 @@ export function Composer({
             if (!e.target.value.trim()) setUsedSign(false);
           }}
           onKeyDown={onKeyDown}
-          placeholder={signOpen ? 'Kata dari isyarat muncul di sini…' : placeholder}
-          className="block max-h-40 min-h-12 w-full resize-none bg-transparent px-3.5 py-3 text-base text-brand-900 placeholder:text-muted focus:outline-none"
+          placeholder={placeholder}
+          className="block max-h-40 min-h-11 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-base text-ink placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap placeholder:text-[#a39b90] focus:outline-none"
         />
-        <div className="flex items-center gap-1.5 px-1 pb-0.5">
-          {onUpload && (
-            <>
-              <input
-                ref={file}
-                type="file"
-                accept="application/pdf,.pdf"
-                className="sr-only"
-                tabIndex={-1}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  e.target.value = '';
-                  if (f) onUpload(f);
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => file.current?.click()}
-                disabled={uploading}
-                aria-label="Tambah materi PDF"
-                title="Tambah materi PDF (maks 10 halaman)"
-                className="grid size-11 shrink-0 place-items-center rounded-2xl text-brand-600 transition-colors hover:bg-brand-50 disabled:opacity-50"
-              >
-                {uploading ? <LoaderCircle className="size-5 anim-spin" aria-hidden="true" /> : <Paperclip className="size-5" aria-hidden="true" />}
-              </button>
-            </>
-          )}
-          <SignButton open={signOpen} onToggle={() => setSignOpen((v) => !v)} wave={waveOnMount} compact={compact} />
-          {usedSign && <span className="hidden text-[0.6875rem] font-bold text-brand-600 sm:inline">Berisi kata dari isyarat</span>}
-          <Button type="submit" className="ml-auto size-11 rounded-2xl px-0" disabled={!value.trim() || sending} aria-label="Kirim pesan">
-            {sending ? <LoaderCircle className="anim-spin" /> : <Send />}
-          </Button>
-        </div>
+        <SignButton open={signOpen} onToggle={() => setSignOpen((v) => !v)} wave={waveOnMount} compact={compact} />
+        <button
+          type="submit"
+          disabled={!value.trim() || sending}
+          aria-label="Kirim pertanyaan"
+          className="grid size-11 shrink-0 place-items-center rounded-full bg-ink text-white transition-colors hover:bg-brand-800 disabled:bg-[#cfc8bd]"
+        >
+          {sending ? <LoaderCircle className="size-5 anim-spin" aria-hidden="true" /> : <ArrowUp className="size-5" strokeWidth={2.2} aria-hidden="true" />}
+        </button>
       </form>
     </div>
   );
