@@ -1,22 +1,26 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-type Variant = 'primary' | 'dark' | 'outline' | 'ghost' | 'soft' | 'danger';
+type Variant = 'primary' | 'tiger' | 'dark' | 'outline' | 'outline-tiger' | 'ghost' | 'soft' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
 
 const VARIANT: Record<Variant, string> = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-800 shadow-[0_10px_22px_rgba(83,74,183,0.22)]',
-  dark: 'bg-brand-900 text-white hover:bg-brand-800',
-  outline: 'border border-line bg-white text-brand-800 hover:bg-brand-50',
+  /** Aksi utama: hitam (panduan UI). Oranye penuh hanya untuk "Tanya" (variant tiger). */
+  primary: 'bg-ink text-white hover:bg-brand-800 disabled:bg-[#d4cdc2] disabled:text-white disabled:opacity-100',
+  tiger: 'bg-tiger text-ink hover:bg-[#e47c20]',
+  dark: 'bg-ink text-white hover:bg-brand-800',
+  outline: 'border-[1.5px] border-line bg-white text-ink hover:bg-sand',
+  /** Aksi kecil di daftar (pola tombol "Add" ESB). */
+  'outline-tiger': 'border-[1.5px] border-tiger-ink bg-white text-tiger-ink hover:bg-cream',
   ghost: 'text-brand-800 hover:bg-brand-50',
   soft: 'bg-brand-50 text-brand-800 hover:bg-brand-100',
   /** Tindakan yang menghapus data (mis. hapus percakapan). */
-  danger: 'bg-rec text-white hover:bg-[#b93a3a] shadow-[0_10px_22px_rgba(214,69,69,0.22)]',
+  danger: 'bg-rec text-white hover:bg-[#ad2f28]',
 };
 const SIZE: Record<Size, string> = {
-  sm: 'h-9 px-3 text-xs gap-1.5 rounded-xl',
-  md: 'h-11 px-4 text-sm gap-2 rounded-2xl',
-  lg: 'h-14 px-6 text-base gap-2.5 rounded-2xl',
+  sm: 'h-9 px-3 text-xs gap-1.5 rounded-[10px]',
+  md: 'h-11 px-4 text-sm gap-2 rounded-xl',
+  lg: 'h-14 px-6 text-base gap-2.5 rounded-xl',
 };
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size };

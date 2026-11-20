@@ -29,15 +29,16 @@ export const SKELETON = {
   showFace: true,
   colors: {
     /** Mata & mulut. */
-    face: '#CECBF6',
-    /** Kepala & badan: siluet gelap. JANGAN sama dengan latar panel (bg-brand-800 #3C3489), nanti tak terlihat. */
-    head: '#1F1A4D',
-    /** Telinga, sedikit lebih terang dari kepala. */
-    ear: '#534AB7',
-    body: '#1F1A4D',
-    arm: '#7F77DD',
-    bone: '#CECBF6',
+    face: '#3A2416',
+    /** Kepala: warna kulit (panduan UI, peraga isyarat di latar gelap). */
+    head: '#F2CDA8',
+    /** Telinga, sedikit lebih gelap dari kepala. */
+    ear: '#E2B48A',
+    /** Badan: biru tua. JANGAN sama dengan latar panel (#2A2520), nanti tak terlihat. */
+    body: '#2B3A55',
+    arm: '#3E5378',
+    bone: '#FFFFFF',
     joint: '#FFFFFF',
-    tip: '#AFA9EC',
+    tip: '#F28A2E',
   },
 } as const;

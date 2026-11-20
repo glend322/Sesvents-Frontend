@@ -36,10 +36,12 @@ type Props = {
    * ke detik tertentu. Dibaca setiap kali pemutaran dimulai (lihat `run`), bukan saat berjalan.
    */
   startProgress?: number;
+  /** true = tahan di posisi `startProgress` (jeda), tanpa menjalankan waktu. */
+  paused?: boolean;
   className?: string;
 };
 
-export function SkeletonPlayer({ clips, run = 0, onProgress, onSegment, onDone, speed = SKELETON.speed, startProgress = 0, className }: Props) {
+export function SkeletonPlayer({ clips, run = 0, onProgress, onSegment, onDone, speed = SKELETON.speed, startProgress = 0, paused = false, className }: Props) {
   const data = useMemo(() => buildTimeline(clips), [clips]);
   const [t, setT] = useState(0);
   const cb = useRef({ onProgress, onSegment, onDone });
@@ -53,6 +55,10 @@ export function SkeletonPlayer({ clips, run = 0, onProgress, onSegment, onDone, 
     const total = SKELETON.holdStartMs + data.durationMs / speed + SKELETON.holdEndMs;
     const clipAt = (elapsed: number) => Math.min(data.durationMs, Math.max(0, (elapsed - SKELETON.holdStartMs) * speed));
     const offset = Math.min(0.999, Math.max(0, from.current)) * total;
+    if (paused) {
+      setT(clipAt(offset));
+      return;
+    }
     const t0 = performance.now() - offset;
     let raf = 0;
     let done = false;
@@ -77,7 +83,7 @@ export function SkeletonPlayer({ clips, run = 0, onProgress, onSegment, onDone, 
     seg.current = -1;
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [data, run, speed]);
+  }, [data, run, speed, paused]);
 
   const f = frameAt(data, t);
   const sw = data.shoulderW;
