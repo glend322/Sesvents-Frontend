@@ -1,16 +1,10 @@
-import { Hand } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
- * Tanda LUNAR versi panduan UI: kotak tinta dengan tangan oranye. Satu bentuk untuk latar putih
- * maupun banner oranye (kontras tetap tinggi di keduanya).
+ * Tanda LUNAR: ikon tangan isyarat huruf L di dalam squircle oranye (/logo.png).
  */
 export function LogoMark({ className }: { className?: string }) {
-  return (
-    <span aria-hidden="true" className={cn('grid size-8 shrink-0 place-items-center rounded-[10px] bg-ink text-tiger', className)}>
-      <Hand className="size-[58%]" strokeWidth={2.2} />
-    </span>
-  );
+  return <img src="/logo.png" alt="" aria-hidden="true" className={cn('size-8 shrink-0 object-contain', className)} />;
 }
 
 export function Logo({ className }: { className?: string }) {
