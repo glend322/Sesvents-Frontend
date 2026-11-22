@@ -1,23 +1,51 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+<<<<<<< HEAD
+import { AnimatePresence, motion } from 'framer-motion';
+import { CircleAlert, Clock, Info, LoaderCircle, Wifi } from 'lucide-react';
+import { TigerMascot, type MascotMood } from '@/components/mascot/TigerMascot';
+=======
 import { motion } from 'framer-motion';
 import { CircleAlert, Clock, Hash, Info, LoaderCircle, Lock, Mail, User, Wifi } from 'lucide-react';
 import { TigerMascot } from '@/components/mascot/TigerMascot';
+>>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
 import { APP } from '@/config/app.config';
 import { cn } from '@/lib/utils';
 import { AUTH } from '../auth.config';
+<<<<<<< HEAD
+import { validateCredentialLengths } from '../auth.service';
+=======
 import { isValidEmail, readyAccounts, validateCredentialLengths } from '../auth.service';
+>>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
 import { useAuth } from '../AuthContext';
 import { Field } from '../components/Field';
 import { ForgotPasswordDialog } from './ForgotPasswordDialog';
 
+<<<<<<< HEAD
+/**
+ * Halaman Masuk & Buat Akun (Email + Password).
+ * - Mode Masuk: Email, Password, Masuk, Belum punya akun? Daftar, Lupa password?.
+ * - Mode Buat Akun: Nama lengkap, Email, Password (Minimal 8 huruf atau angka.),
+ *   kotak pengingat orang tua/guru, Daftar, Sudah punya akun? Masuk.
+ * - Transisi antar mode Masuk & Buat Akun dibuat seragam dan stabil (posisi banner & maskot tidak melompat).
+ */
+type AuthMode = 'login' | 'register';
+=======
 type AuthMode = 'login' | 'register' | 'onboarding';
+>>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
 
 const hintAccounts = readyAccounts;
 const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 const GRADES = [4, 5, 6] as const;
+
+const FORM_TRANSITION = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: 10 },
+  transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const },
+};
 
 export function LoginPage() {
   const { login, register, updateProfile, profile, isAuthenticated, loading, endedReason, clearEndedReason } = useAuth();
@@ -29,8 +57,12 @@ export function LoginPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+<<<<<<< HEAD
+  /** Pesan salah email/password (kotak merah muda di atas form). */
+=======
   const [grade, setGrade] = useState<number>(5);
   const [classCode, setClassCode] = useState('');
+>>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
   const [message, setMessage] = useState<ReactNode>(null);
   const [netError, setNetError] = useState(false);
   const [fieldError, setFieldError] = useState<{ fullName?: string; email?: string; password?: string }>({});
@@ -39,9 +71,11 @@ export function LoginPage() {
   const [lockUntil, setLockUntil] = useState<number | null>(null);
   const [lockLeft, setLockLeft] = useState(0);
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [typingField, setTypingField] = useState(false);
   const forgotRef = useRef<HTMLButtonElement>(null);
 
   const locked = lockLeft > 0;
+  const mascotMood: MascotMood = submitting ? 'thinking' : typingField ? 'typing' : 'idle';
 
   useEffect(() => {
     // Jangan redirect otomatis jika baru selesai daftar dan sedang di Langkah 2 (onboarding).
@@ -66,6 +100,11 @@ export function LoginPage() {
     return () => window.clearInterval(id);
   }, [lockUntil]);
 
+<<<<<<< HEAD
+  const switchMode = (nextMode: AuthMode) => {
+    setMode(nextMode);
+    setMessage(null);
+=======
   const switchMode = (next: 'login' | 'register') => {
     setMode(next);
     setMessage(null);
@@ -77,11 +116,52 @@ export function LoginPage() {
   const onEdit = (setter: (v: string) => void, key: 'fullName' | 'email' | 'password') => (value: string) => {
     setter(value);
     if (!locked) setMessage(null);
+>>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
     setNetError(false);
-    setFieldError((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+    setFieldError({});
     if (endedReason) clearEndedReason();
   };
 
+<<<<<<< HEAD
+  const onEdit =
+    (setter: (v: string) => void, key: 'fullName' | 'email' | 'password') =>
+    (value: string) => {
+      setter(value);
+      if (!locked) setMessage(null);
+      setNetError(false);
+      setFieldError((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+      if (endedReason) clearEndedReason();
+    };
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (locked || submitting) return;
+
+    const cleanName = fullName.trim();
+    const cleanEmail = email.trim();
+    const pass = password;
+    const missing: typeof fieldError = {};
+
+    if (mode === 'register' && !cleanName) {
+      missing.fullName = 'Isi nama lengkapmu dulu, ya.';
+    }
+    if (!cleanEmail) {
+      missing.email = 'Isi email kamu dulu, ya.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      missing.email = 'Format email belum sesuai (contoh: nadia.putri@gmail.com).';
+    }
+    if (!pass.trim()) {
+      missing.password = 'Isi password-mu dulu, ya.';
+    } else if (mode === 'register' && pass.length < 8) {
+      missing.password = 'Minimal 8 huruf atau angka.';
+    }
+
+    if (missing.fullName || missing.email || missing.password) {
+      setFieldError(missing);
+      return;
+    }
+
+=======
   const onSubmitLogin = async (e: FormEvent) => {
     e.preventDefault();
     if (locked || submitting) return;
@@ -96,6 +176,7 @@ export function LoginPage() {
       setFieldError(missing);
       return;
     }
+>>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
     const tooLong = validateCredentialLengths(cleanEmail, pass);
     if (tooLong) {
       setMessage(tooLong);
@@ -134,6 +215,9 @@ export function LoginPage() {
     );
   };
 
+<<<<<<< HEAD
+  if (loading || isAuthenticated) {
+=======
   const onSubmitRegister = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting) return;
@@ -197,6 +281,7 @@ export function LoginPage() {
   };
 
   if (loading || (isAuthenticated && mode !== 'onboarding')) {
+>>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
     return (
       <div className="grid min-h-dvh place-items-center bg-sand" role="status" aria-live="polite">
         <span className="flex items-center gap-2 text-sm text-muted">
@@ -213,22 +298,39 @@ export function LoginPage() {
         ? 'Kamu sudah keluar. Sampai jumpa lagi!'
         : null;
 
+<<<<<<< HEAD
+  const isRegister = mode === 'register';
+=======
+>>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
   const compact = !!message || locked || !!notice;
   const firstName = (profile?.name || fullName || 'Teman').trim().split(/\s+/)[0];
 
   return (
-    <div className="flex min-h-dvh flex-col bg-white lg:grid lg:grid-cols-[1fr_1fr]">
-      {/* ---------- Banner ---------- */}
+    <div className="flex min-h-dvh flex-col bg-white lg:grid lg:grid-cols-[1.06fr_1fr]">
+      {/* ==================== PANEL ORANYE + MASKOT + PEMISAH GELOMBANG ==================== */}
       <section
         className={cn(
-          'relative isolate overflow-hidden bg-tiger px-6 pt-8 lg:flex lg:flex-col lg:px-14 lg:pb-14 lg:pt-12',
-          compact ? 'pb-12' : 'pb-20',
+          'relative isolate overflow-hidden bg-tiger px-6 pb-16 pt-7 sm:px-10',
+          'lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:justify-between lg:py-10 lg:pl-14 lg:pr-24 xl:py-12 xl:pl-20 xl:pr-28',
         )}
       >
-        <a href={APP.landingUrl} aria-label="LUNAR, ke halaman utama" className="relative z-10 inline-flex rounded-xl">
+        {/* Logo LUNAR */}
+        <a
+          href={APP.landingUrl}
+          aria-label="LUNAR, ke halaman utama"
+          className="relative z-10 inline-flex w-fit shrink-0 rounded-xl"
+        >
           <Logo />
         </a>
 
+<<<<<<< HEAD
+        {/* Maskot di Desktop: tinggi & posisi tetap sama persis di mode Masuk maupun Buat Akun */}
+        <div className="relative z-10 my-auto hidden shrink-0 items-center justify-center py-2 lg:flex">
+          <TigerMascot
+            mood={mascotMood}
+            className="h-[15rem] w-[12.75rem] xl:h-[17rem] xl:w-[14.5rem]"
+          />
+=======
         <div className="relative z-10 mt-8 max-w-[16rem] sm:max-w-sm lg:mt-auto lg:max-w-md">
           <h1 className="text-[1.625rem] font-black uppercase leading-[1.1] tracking-[0.01em] text-ink lg:text-[2.75rem]">
             {mode === 'register'
@@ -248,16 +350,223 @@ export function LoginPage() {
                   : 'Pakai email dan password akun LUNAR kamu.'}
             </p>
           )}
+>>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
         </div>
 
+        {/* Teks Judul & Subjudul dengan tinggi tetap (fixed height) agar posisi maskot & teks tidak bergeser sedikit pun */}
+        <div className="relative z-10 mt-6 h-[6.5rem] shrink-0 sm:mt-8 sm:h-[7.25rem] lg:mt-0 lg:h-[9.25rem] lg:max-w-md xl:h-[9.75rem]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mode}
+              initial={FORM_TRANSITION.initial}
+              animate={FORM_TRANSITION.animate}
+              exit={FORM_TRANSITION.exit}
+              transition={FORM_TRANSITION.transition}
+            >
+              <h1 className="max-w-[16.5rem] text-[1.625rem] font-black uppercase leading-[1.08] tracking-[0.01em] text-ink sm:max-w-sm sm:text-[2rem] lg:max-w-md lg:text-[2.45rem] xl:text-[2.7rem]">
+                {isRegister
+                  ? 'Buat akun, yuk'
+                  : compact
+                    ? 'Masuk dulu, yuk'
+                    : 'Masuk untuk mulai belajar'}
+              </h1>
+              {!compact && (
+                <p className="mt-2.5 max-w-[12.75rem] text-[0.9375rem] leading-snug text-ink sm:max-w-xs sm:text-base lg:mt-3 lg:max-w-md lg:text-[1.0625rem]">
+                  {isRegister
+                    ? 'Daftar dengan mudah untuk mulai belajar bersama LUNAR.'
+                    : 'Pakai email dan password akunmu.'}
+                </p>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Maskot di Mobile/Tablet (< lg): posisi tetap stabil di kedua mode */}
         <TigerMascot
-          className={cn(
-            'absolute right-1 z-0 h-[10.5rem] w-[9rem] lg:bottom-auto lg:right-14 lg:top-28 lg:h-[19rem] lg:w-[16rem]',
-            compact ? '-bottom-20' : '-bottom-10',
-          )}
+          mood={mascotMood}
+          className="absolute -bottom-7 right-2 z-0 h-[9.25rem] w-[7.75rem] sm:right-6 sm:h-[11rem] sm:w-[9.25rem] lg:hidden"
         />
+
+        {/* Pemisah Gelombang Organik Berlapis — Desktop */}
+        <DesktopWaveDivider />
+
+        {/* Pemisah Gelombang Organik Berlapis — Mobile & Tablet */}
+        <MobileWaveDivider />
       </section>
 
+<<<<<<< HEAD
+      {/* ==================== PANEL PUTIH / FORM ==================== */}
+      <section className="relative z-10 flex flex-1 flex-col bg-white px-6 pb-8 pt-6 sm:px-10 lg:items-center lg:justify-center lg:px-10 lg:py-12 xl:px-14">
+        <div className="mx-auto flex w-full max-w-[26rem] flex-1 flex-col justify-center lg:mx-0 lg:flex-none">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mode}
+              initial={FORM_TRANSITION.initial}
+              animate={FORM_TRANSITION.animate}
+              exit={FORM_TRANSITION.exit}
+              transition={FORM_TRANSITION.transition}
+              className="flex w-full flex-col"
+            >
+              <div aria-live="polite" role="status">
+                {locked ? (
+                  <Alert tone="cream" icon={<Clock />}>
+                    Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi.
+                  </Alert>
+                ) : message ? (
+                  <Alert tone="error" icon={<CircleAlert />}>
+                    {message}
+                  </Alert>
+                ) : notice ? (
+                  <Alert tone="cream" icon={<Info />}>
+                    {notice}
+                  </Alert>
+                ) : null}
+              </div>
+
+              {mode === 'login' ? (
+                /* ---------------- FORM MASUK ---------------- */
+                <>
+                  <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
+                    <Field
+                      label="Email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => onEdit(setEmail, 'email')(e.target.value)}
+                      onFocus={() => setTypingField(true)}
+                      onBlur={() => setTypingField(false)}
+                      placeholder="nadia.putri@gmail.com"
+                      autoComplete="email"
+                      inputMode="email"
+                      spellCheck={false}
+                      error={fieldError.email}
+                    />
+
+                    <Field
+                      label="Password"
+                      password
+                      value={password}
+                      onChange={(e) => onEdit(setPassword, 'password')(e.target.value)}
+                      onFocus={() => setTypingField(true)}
+                      onBlur={() => setTypingField(false)}
+                      placeholder="Masukkan password"
+                      autoComplete="current-password"
+                      error={fieldError.password}
+                    />
+
+                    <Button type="submit" size="lg" disabled={submitting || locked} className="mt-1 w-full text-base">
+                      {locked ? (
+                        <span className="tabular-nums">Coba lagi dalam {mmss(lockLeft)}</span>
+                      ) : submitting ? (
+                        <>
+                          <LoaderCircle className="anim-spin" aria-hidden="true" /> Memeriksa…
+                        </>
+                      ) : (
+                        'Masuk'
+                      )}
+                    </Button>
+                  </form>
+
+                  <div className="mt-5 flex flex-col items-center gap-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => switchMode('register')}
+                      className="rounded-lg px-2 py-0.5 text-[0.9375rem] font-bold text-tiger-ink underline-offset-4 hover:underline"
+                    >
+                      Belum punya akun? Daftar
+                    </button>
+
+                    <button
+                      ref={forgotRef}
+                      type="button"
+                      onClick={() => setForgotOpen(true)}
+                      className="rounded-lg px-2 py-0.5 text-[0.9375rem] font-semibold text-muted underline-offset-4 transition-colors hover:text-ink hover:underline"
+                    >
+                      Lupa password?
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* ---------------- FORM BUAT AKUN ---------------- */
+                <>
+                  <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+                    <Field
+                      label="Nama lengkap"
+                      value={fullName}
+                      onChange={(e) => onEdit(setFullName, 'fullName')(e.target.value)}
+                      onFocus={() => setTypingField(true)}
+                      onBlur={() => setTypingField(false)}
+                      placeholder="Nadia Putri"
+                      autoComplete="name"
+                      error={fieldError.fullName}
+                    />
+
+                    <Field
+                      label="Email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => onEdit(setEmail, 'email')(e.target.value)}
+                      onFocus={() => setTypingField(true)}
+                      onBlur={() => setTypingField(false)}
+                      placeholder="nadia.putri@gmail.com"
+                      autoComplete="email"
+                      inputMode="email"
+                      spellCheck={false}
+                      error={fieldError.email}
+                    />
+
+                    <Field
+                      label="Password"
+                      password
+                      value={password}
+                      onChange={(e) => onEdit(setPassword, 'password')(e.target.value)}
+                      onFocus={() => setTypingField(true)}
+                      onBlur={() => setTypingField(false)}
+                      placeholder="Masukkan password"
+                      autoComplete="new-password"
+                      hint="Minimal 8 huruf atau angka."
+                      error={fieldError.password}
+                    />
+
+                    <div className="mt-0.5 rounded-2xl bg-cream px-4 py-3.5 text-[0.875rem] leading-snug text-ink">
+                      Untuk anak di bawah 13 tahun, minta <b className="font-bold">orang tua atau guru</b> membantu membuat akun.
+                    </div>
+
+                    <Button type="submit" size="lg" disabled={submitting || locked} className="mt-1 w-full text-base">
+                      {locked ? (
+                        <span className="tabular-nums">Coba lagi dalam {mmss(lockLeft)}</span>
+                      ) : submitting ? (
+                        <>
+                          <LoaderCircle className="anim-spin" aria-hidden="true" /> Mendaftarkan…
+                        </>
+                      ) : (
+                        'Daftar'
+                      )}
+                    </Button>
+                  </form>
+
+                  <div className="mt-5 flex flex-col items-center text-center">
+                    <button
+                      type="button"
+                      onClick={() => switchMode('login')}
+                      className="rounded-lg px-2 py-0.5 text-[0.9375rem] font-bold text-tiger-ink underline-offset-4 hover:underline"
+                    >
+                      Sudah punya akun? Masuk
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {netError && (
+                <div className="mt-6">
+                  <Alert tone="error" icon={<Wifi />} role="alert">
+                    Tidak bisa menghubungi server. Cek internet, lalu coba lagi.
+                  </Alert>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+=======
       {/* ---------- Form ---------- */}
       <section className="relative z-10 -mt-6 flex flex-1 flex-col rounded-t-3xl bg-white px-6 pb-6 pt-7 lg:mt-0 lg:items-center lg:justify-center lg:rounded-none lg:px-10">
         <motion.div
@@ -497,15 +806,70 @@ export function LoginPage() {
             )}
           </div>
         </motion.div>
+>>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
       </section>
 
       <ForgotPasswordDialog
         open={forgotOpen}
+        defaultEmail={email}
         onClose={() => {
           setForgotOpen(false);
           forgotRef.current?.focus();
         }}
       />
+    </div>
+  );
+}
+
+/**
+ * Pemisah gelombang vertikal berlapis (oranye → krem hangat → putih) untuk tampilan Desktop.
+ */
+function DesktopWaveDivider() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-y-0 -right-px z-20 hidden w-20 select-none lg:block xl:w-28"
+    >
+      <svg viewBox="0 0 120 800" preserveAspectRatio="none" className="h-full w-full">
+        <path
+          d="M 55 0 C 5 180, 110 380, 35 580 C 0 680, 75 760, 50 800 L 120 800 L 120 0 Z"
+          fill="#FFF2E2"
+          fillOpacity="0.38"
+        />
+        <path
+          d="M 75 0 C 115 200, 20 420, 80 620 C 105 700, 45 760, 72 800 L 120 800 L 120 0 Z"
+          fill="#FFF2E2"
+          fillOpacity="0.7"
+        />
+        <path
+          d="M 92 0 C 42 190, 118 410, 68 610 C 44 705, 96 765, 86 800 L 120 800 L 120 0 Z"
+          fill="#FFFFFF"
+        />
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * Pemisah gelombang horizontal berlapis (oranye → krem hangat → putih) untuk tampilan Mobile & Tablet.
+ */
+function MobileWaveDivider() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-0 -bottom-px z-10 h-10 w-full select-none lg:hidden"
+    >
+      <svg viewBox="0 0 400 48" preserveAspectRatio="none" className="h-full w-full">
+        <path
+          d="M 0 18 C 95 44, 210 -4, 400 22 L 400 48 L 0 48 Z"
+          fill="#FFF2E2"
+          fillOpacity="0.45"
+        />
+        <path
+          d="M 0 28 C 130 4, 265 46, 400 18 L 400 48 L 0 48 Z"
+          fill="#FFFFFF"
+        />
+      </svg>
     </div>
   );
 }

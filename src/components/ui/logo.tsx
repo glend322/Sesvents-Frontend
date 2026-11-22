@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
  * Tanda LUNAR: ikon tangan isyarat huruf L di dalam squircle oranye (/logo.png).
  */
 export function LogoMark({ className }: { className?: string }) {
-  return <img src="/logo.png" alt="" aria-hidden="true" className={cn('size-8 shrink-0 object-contain', className)} />;
+  return <img src="/logo.png?v=2" alt="" aria-hidden="true" className={cn('size-8 shrink-0 object-contain', className)} />;
 }
 
 export function Logo({ className }: { className?: string }) {
