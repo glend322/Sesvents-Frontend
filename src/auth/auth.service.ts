@@ -3,48 +3,48 @@ import { AUTH } from './auth.config';
 import type { LoginResult, SiswaProfile } from './types';
 
 /**
- * Auth service siswa (ADR-051 D2). Akun dibuat sekolah; siswa masuk dengan NIS + password lewat
- * Backend (POST /api/student/auth/login). Tidak ada mode demo (ADR-053).
+ * Auth service siswa (ADR-056): login & daftar mandiri memakai Email + Password lewat Backend.
  */
 export interface AuthService {
-  login(nis: string, password: string): Promise<LoginResult>;
-  /**
-   * Perbarui token dengan refresh token (ADR-052). 'invalid' = token dicabut / akun nonaktif →
-   * sesi harus diakhiri; 'service-error' = server tidak terjangkau → sesi dibiarkan.
-   */
+  login(email: string, password: string): Promise<LoginResult>;
+  register(fullName: string, email: string, password: string): Promise<LoginResult>;
+  completeProfile(accessToken: string, data: { grade?: number; classCode?: string | null; fullName?: string }): Promise<SiswaProfile | null>;
+  forgotPassword(email: string): Promise<boolean>;
+  logout(accessToken?: string): Promise<void>;
   refresh(refreshToken: string): Promise<LoginResult | { ok: false; reason: 'invalid' }>;
 }
 
 /**
- * Akun siap pakai yang ditampilkan di bawah form login (akun asli di Supabase), diisi lewat
- * Frontend/main/.env (VITE_DEMO_NIS + VITE_DEMO_PASSWORD). Kosong = kotak tidak tampil.
- * Nilainya ikut ke bundle FE, jadi kosongkan untuk build publik.
+ * Akun siap pakai untuk demo/evaluasi yang ditampilkan di bawah form login.
  */
-const demoNis = (import.meta.env.VITE_DEMO_NIS || '0012345678').trim();
-const demoPassword = (import.meta.env.VITE_DEMO_PASSWORD || 'Isyara-0bf32d').trim();
-export const readyAccounts = [{ nis: demoNis || '0012345678', password: demoPassword || 'Isyara-0bf32d' }];
+const demoEmail = (import.meta.env.VITE_DEMO_EMAIL || 'demo@lunar.app').trim();
+const demoPassword = (import.meta.env.VITE_DEMO_PASSWORD || 'LunarDemo2026!').trim();
+export const readyAccounts = demoEmail && demoPassword ? [{ email: demoEmail, password: demoPassword }] : [];
 
 // ---------------------------------------------------------------- HTTP
 
-/** Kontrak BE: backend/app/api/student.py (StudentLoginResponse). */
 type ApiStudent = {
   id: string;
-  nis: string;
+  email?: string | null;
+  nis?: string | null;
   full_name: string;
-  class_name: string | null;
-  grade: number | null;
-  avatar_url: string | null;
-  institution: { id: string; name: string };
+  class_name?: string | null;
+  grade?: number | null;
+  class_code?: string | null;
+  avatar_url?: string | null;
+  institution?: { id: string; name: string } | null;
 };
 type ApiLoginResponse = { access_token: string; token_type: 'bearer'; expires_in: number; refresh_token: string; student: ApiStudent };
 
 export const toProfile = (s: ApiStudent): SiswaProfile => ({
   id: s.id,
-  nis: s.nis,
+  email: s.email?.trim() || s.nis?.trim() || '',
+  nis: s.nis ?? undefined,
   name: s.full_name,
   className: s.class_name ?? undefined,
   grade: s.grade ?? undefined,
-  school: s.institution.name,
+  classCode: s.class_code ?? undefined,
+  school: s.institution?.name ?? undefined,
   photoUrl: s.avatar_url ?? undefined,
 });
 
@@ -59,6 +59,8 @@ async function postAuth(path: string, body: unknown): Promise<LoginResult> {
       signal: ctrl.signal,
     });
     if (res.status === 401) return { ok: false, reason: 'invalid-credentials' };
+    if (res.status === 409) return { ok: false, reason: 'email-exists' };
+    if (res.status === 422) return { ok: false, reason: 'validation-error' };
     if (!res.ok) return { ok: false, reason: 'service-error' };
     const data = (await res.json()) as ApiLoginResponse;
     return {
@@ -74,6 +76,7 @@ async function postAuth(path: string, body: unknown): Promise<LoginResult> {
 }
 
 export const httpAuthService: AuthService = {
+<<<<<<< HEAD
   async login(nis, password) {
     const res = await postAuth('/api/student/auth/login', { nis, password });
     if (!res.ok && res.reason === 'service-error') {
@@ -102,6 +105,53 @@ export const httpAuthService: AuthService = {
       };
     }
     return res;
+=======
+  login: (email, password) => postAuth('/api/student/auth/login', { email, password }),
+  register: (fullName, email, password) =>
+    postAuth('/api/student/auth/register', { full_name: fullName, email, password }),
+  async completeProfile(accessToken, data) {
+    const payload: Record<string, unknown> = {};
+    if (data.fullName !== undefined) payload.full_name = data.fullName;
+    if (data.grade !== undefined) payload.grade = data.grade;
+    if (data.classCode !== undefined) payload.class_code = data.classCode;
+    try {
+      const res = await fetch(`${APP.apiBaseUrl}/api/student/me`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return null;
+      return toProfile((await res.json()) as ApiStudent);
+    } catch {
+      return null;
+    }
+  },
+  async forgotPassword(email) {
+    try {
+      const res = await fetch(`${APP.apiBaseUrl}/api/student/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+  async logout(accessToken) {
+    if (!accessToken) return;
+    try {
+      await fetch(`${APP.apiBaseUrl}/api/student/auth/logout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+    } catch {
+      // Best-effort tracking logout; never blocks client logout.
+    }
+>>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
   },
   async refresh(refreshToken) {
     if (refreshToken === 'offline-preview-refresh-token') {
@@ -129,8 +179,14 @@ export const httpAuthService: AuthService = {
 
 export const authService: AuthService = httpAuthService;
 
-export function validateCredentialLengths(nis: string, password: string): string | null {
-  if (nis.length > AUTH.maxNisLength) return `NIS maksimal ${AUTH.maxNisLength} karakter.`;
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+export function isValidEmail(email: string): boolean {
+  return EMAIL_RE.test(email.trim());
+}
+
+export function validateCredentialLengths(email: string, password: string): string | null {
+  if (email.length > AUTH.maxEmailLength) return `Email maksimal ${AUTH.maxEmailLength} karakter.`;
   if (password.length > AUTH.maxPasswordLength) return `Password maksimal ${AUTH.maxPasswordLength} karakter.`;
   return null;
 }
