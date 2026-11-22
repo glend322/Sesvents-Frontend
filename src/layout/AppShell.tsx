@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, History, LoaderCircle, MessageSquare, PlaySquare, Plus, Settings, X } from 'lucide-react';
+import { BookOpen, History, LoaderCircle, MessageSquare, PlaySquare, Plus, Search, Settings, X } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import { Avatar } from '@/auth/components/Avatar';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
  */
 export const NAV = [
   { to: '/chat', label: 'Tanya LUNAR', short: 'Tanya', icon: MessageSquare },
-  { to: '/video', label: 'Video Pelajaran', short: 'Video', icon: PlaySquare },
+  { to: '/video', label: 'Konten Pembelajaran', short: 'Konten', icon: PlaySquare },
   { to: '/materi', label: 'Materi Saya', short: 'Materi', icon: BookOpen },
 ] as const;
 
@@ -71,10 +71,13 @@ export function AppShell() {
 
   const newChat = () => navigate('/chat');
 
-  // ---------- hapus percakapan dari sidebar
+  // ---------- hapus & cari percakapan dari sidebar
   const [confirm, setConfirm] = useState<ChatSession | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [chatSearchOpen, setChatSearchOpen] = useState(false);
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
+  const chatSearchInputRef = useRef<HTMLInputElement>(null);
   // Tombol X yang membuka dialog, supaya fokus bisa dikembalikan saat dibatalkan.
   const trigger = useRef<HTMLButtonElement | null>(null);
   // Setelah terhapus, tombol X-nya ikut hilang: fokus dipindah ke "Chat baru" agar tidak lepas.
@@ -155,7 +158,53 @@ export function AppShell() {
         </nav>
 
         <div className="mt-5 min-h-0 flex-1 border-t border-line pt-4">
-          <p className="mb-1.5 px-3.5 text-[0.6875rem] font-extrabold uppercase tracking-[0.1em] text-ink">Percakapan terakhir</p>
+          <div className="mb-1.5 flex items-center justify-between pl-3.5 pr-1.5">
+            <p className="text-[0.6875rem] font-extrabold uppercase tracking-[0.1em] text-ink">Percakapan terakhir</p>
+            <button
+              type="button"
+              onClick={() => {
+                setChatSearchOpen((prev) => {
+                  const next = !prev;
+                  if (!next) setChatSearchQuery('');
+                  else window.setTimeout(() => chatSearchInputRef.current?.focus(), 20);
+                  return next;
+                });
+              }}
+              aria-label="Cari judul percakapan"
+              aria-expanded={chatSearchOpen}
+              title="Cari judul percakapan"
+              className={cn(
+                'grid size-7 place-items-center rounded-lg transition-colors',
+                chatSearchOpen ? 'bg-cream text-tiger-ink' : 'text-muted hover:bg-sand hover:text-ink',
+              )}
+            >
+              <Search className="size-3.5" aria-hidden="true" />
+            </button>
+          </div>
+
+          {chatSearchOpen && (
+            <div className="mb-2 px-2">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted" aria-hidden="true" />
+                <input
+                  ref={chatSearchInputRef}
+                  type="search"
+                  value={chatSearchQuery}
+                  onChange={(e) => setChatSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setChatSearchOpen(false);
+                      setChatSearchQuery('');
+                    }
+                  }}
+                  placeholder="Cari judul chat…"
+                  aria-label="Cari judul percakapan"
+                  className="h-8 w-full rounded-xl border border-line bg-sand/60 pl-8 pr-3 text-xs text-ink placeholder:text-muted focus:border-brand-400 focus:bg-white focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+
           {!sessions.loaded ? (
             <div className="flex flex-col gap-1.5 px-1.5" aria-hidden="true">
               {[0, 1, 2].map((i) => (
@@ -165,31 +214,42 @@ export function AppShell() {
           ) : sessions.sessions.length === 0 ? (
             <p className="px-3.5 text-xs leading-relaxed text-muted">{sessions.error ? 'Tidak bisa terhubung ke server.' : 'Belum ada percakapan.'}</p>
           ) : (
-            <ul className="flex flex-col gap-0.5">
-              {sessions.sessions.slice(0, RECENT).map((s) => (
-                <li key={s.id} className="group/chat relative">
-                  <Link
-                    to={`/chat/${s.id}`}
-                    aria-current={s.id === activeChat ? 'page' : undefined}
-                    className={cn(
-                      'block truncate rounded-xl py-2 pl-3.5 pr-9 text-[0.8125rem] transition-colors',
-                      s.id === activeChat ? 'bg-tint font-extrabold text-brand-900' : 'font-semibold text-brand-800 hover:bg-tint',
-                    )}
-                  >
-                    {s.title}
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={(e) => askDelete(s, e.currentTarget)}
-                    aria-label={`Hapus percakapan ${s.title}`}
-                    title="Hapus percakapan"
-                    className="absolute right-1 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-brand-200 transition-colors hover:bg-rec-soft hover:text-rec focus-visible:text-rec group-hover/chat:text-muted"
-                  >
-                    <X className="size-3.5" aria-hidden="true" />
-                  </button>
-                </li>
-              ))}
-            </ul>
+            (() => {
+              const needle = chatSearchQuery.trim().toLowerCase();
+              const filteredSessions = needle
+                ? sessions.sessions.filter((s) => s.title.toLowerCase().includes(needle))
+                : sessions.sessions.slice(0, RECENT);
+              if (filteredSessions.length === 0) {
+                return <p className="px-3.5 py-1 text-xs text-muted">Judul tidak ditemukan.</p>;
+              }
+              return (
+                <ul className="flex flex-col gap-0.5">
+                  {filteredSessions.map((s) => (
+                    <li key={s.id} className="group/chat relative">
+                      <Link
+                        to={`/chat/${s.id}`}
+                        aria-current={s.id === activeChat ? 'page' : undefined}
+                        className={cn(
+                          'block truncate rounded-xl py-2 pl-3.5 pr-9 text-[0.8125rem] transition-colors',
+                          s.id === activeChat ? 'bg-tint font-extrabold text-brand-900' : 'font-semibold text-brand-800 hover:bg-tint',
+                        )}
+                      >
+                        {s.title}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={(e) => askDelete(s, e.currentTarget)}
+                        aria-label={`Hapus percakapan ${s.title}`}
+                        title="Hapus percakapan"
+                        className="absolute right-1 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-brand-200 transition-colors hover:bg-rec-soft hover:text-rec focus-visible:text-rec group-hover/chat:text-muted"
+                      >
+                        <X className="size-3.5" aria-hidden="true" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()
           )}
           {sessions.sessions.length > 0 && (
             <NavLink

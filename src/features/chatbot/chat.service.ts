@@ -124,220 +124,46 @@ async function api<T>(path: string, init: RequestInit = {}, timeoutMs = APP.requ
 
 const sid = (id: string) => encodeURIComponent(id);
 
-// ---------------- Fallback Offline (aktif otomatis jika backend tidak berjalan) ----------------
-const offlineSessions: ChatSession[] = [
-  {
-    id: 'offline-sesi-1',
-    title: 'Siklus air dan pembentukan awan',
-    createdAt: new Date(Date.now() - 3600_000).toISOString(),
-    updatedAt: new Date(Date.now() - 1800_000).toISOString(),
-  },
-  {
-    id: 'offline-sesi-2',
-    title: 'Perbedaan persegi dan persegi panjang',
-    createdAt: new Date(Date.now() - 86400_000).toISOString(),
-    updatedAt: new Date(Date.now() - 82000_000).toISOString(),
-  },
-];
-
-const offlineMessages: Record<string, ChatMessage[]> = {
-  'offline-sesi-1': [
-    {
-      id: 'msg-1',
-      role: 'user',
-      content: 'Jelaskan siklus air dengan sederhana',
-      inputMode: 'text',
-      createdAt: new Date(Date.now() - 3600_000).toISOString(),
-    },
-    {
-      id: 'msg-2',
-      role: 'assistant',
-      content:
-        '1. **Evaporasi (Menguap)**: Panas matahari membuat air di laut dan sungai menguap ke udara.\n2. **Kondensasi (Mengembun)**: Uap air naik ke atas, mendingin, lalu berkumpul menjadi awan.\n3. **Presipitasi (Hujan)**: Ketika awan sudah penuh dan berat, air turun kembali ke bumi sebagai hujan.',
-      inputMode: null,
-      createdAt: new Date(Date.now() - 3590_000).toISOString(),
-    },
-  ],
-  'offline-sesi-2': [
-    {
-      id: 'msg-3',
-      role: 'user',
-      content: 'Apa bedanya persegi dan persegi panjang?',
-      inputMode: 'text',
-      createdAt: new Date(Date.now() - 86400_000).toISOString(),
-    },
-    {
-      id: 'msg-4',
-      role: 'assistant',
-      content:
-        '1. **Persegi** memiliki **4 sisi yang semuanya sama panjang**.\n2. **Persegi panjang** memiliki **2 pasang sisi yang berhadapan sama panjang** (ada sisi panjang dan sisi lebar).',
-      inputMode: null,
-      createdAt: new Date(Date.now() - 86390_000).toISOString(),
-    },
-  ],
-};
-
-const offlineDocs: Record<string, ChatDocument[]> = {};
-
 export const chatService = {
   async listSessions(): Promise<ChatSession[]> {
-    try {
-      const r = await api<{ items: ApiSession[] }>('/api/chat/sessions?page=1&page_size=100');
-      return r.items.map(toSession);
-    } catch (e) {
-      if (e instanceof ChatError && e.kind === 'network') return [...offlineSessions];
-      throw e;
-    }
+    const r = await api<{ items: ApiSession[] }>('/api/chat/sessions?page=1&page_size=100');
+    return r.items.map(toSession);
   },
   async getMessages(id: string): Promise<{ session: ChatSession; messages: ChatMessage[]; documents: ChatDocument[] }> {
-    try {
-      const r = await api<{ session: ApiSession; items: ApiMessage[]; documents?: ApiDocument[] }>(`/api/chat/sessions/${sid(id)}/messages`);
-      return { session: toSession(r.session), messages: r.items.map(toMessage), documents: (r.documents ?? []).map(toDocument) };
-    } catch (e) {
-      if (e instanceof ChatError && e.kind === 'network') {
-        const found = offlineSessions.find((s) => s.id === id);
-        if (!found) throw new ChatError('Percakapan tidak ditemukan', 'not-found');
-        return {
-          session: found,
-          messages: [...(offlineMessages[id] ?? [])],
-          documents: [...(offlineDocs[id] ?? [])],
-        };
-      }
-      throw e;
-    }
+    const r = await api<{ session: ApiSession; items: ApiMessage[]; documents?: ApiDocument[] }>(`/api/chat/sessions/${sid(id)}/messages`);
+    return { session: toSession(r.session), messages: r.items.map(toMessage), documents: (r.documents ?? []).map(toDocument) };
   },
   async createSession(title?: string): Promise<ChatSession> {
-    try {
-      return toSession(await api<ApiSession>('/api/chat/sessions', { method: 'POST', body: JSON.stringify(title ? { title } : {}) }));
-    } catch (e) {
-      if (e instanceof ChatError && e.kind === 'network') {
-        const now = new Date().toISOString();
-        const s: ChatSession = {
-          id: `offline-sesi-${Date.now()}`,
-          title: title || 'Percakapan baru',
-          createdAt: now,
-          updatedAt: now,
-        };
-        offlineSessions.unshift(s);
-        offlineMessages[s.id] = [];
-        offlineDocs[s.id] = [];
-        return s;
-      }
-      throw e;
-    }
+    return toSession(await api<ApiSession>('/api/chat/sessions', { method: 'POST', body: JSON.stringify(title ? { title } : {}) }));
   },
   async send(id: string, content: string, inputMode: InputMode, video?: VideoRef | null): Promise<SendResult> {
-    try {
-      const body: Record<string, unknown> = { content, input_mode: inputMode };
-      if (video) body.video = { id: video.id, section: video.section, t_sec: Math.max(0, Math.round(video.tSec)) };
-      const r = await api<{ session: ApiSession; user_message: ApiMessage; assistant_message: ApiMessage; model: 'openrouter' | 'offline' }>(
-        `/api/chat/sessions/${sid(id)}/messages`,
-        { method: 'POST', body: JSON.stringify(body) },
-        SEND_TIMEOUT_MS,
-      );
-      return { session: toSession(r.session), user: toMessage(r.user_message), assistant: toMessage(r.assistant_message), model: r.model };
-    } catch (e) {
-      if (e instanceof ChatError && e.kind === 'network') {
-        const now = new Date().toISOString();
-        let session = offlineSessions.find((s) => s.id === id);
-        if (!session) {
-          session = { id, title: content.slice(0, 42), createdAt: now, updatedAt: now };
-          offlineSessions.unshift(session);
-        } else {
-          if (session.title === 'Percakapan baru') session.title = content.slice(0, 42);
-          session.updatedAt = now;
-        }
-        const user: ChatMessage = {
-          id: `u-${Date.now()}`,
-          role: 'user',
-          content,
-          inputMode,
-          createdAt: now,
-          videoId: video?.id ?? null,
-          videoTSec: video ? Math.max(0, Math.round(video.tSec)) : null,
-        };
-        const assistant: ChatMessage = {
-          id: `a-${Date.now() + 1}`,
-          role: 'assistant',
-          content:
-            '1. **Penjelasan Singkat**: Materi ini membantu kamu memahami konsep dengan bahasa yang sederhana.\n2. **Peragaan Isyarat**: Kamu dapat memutar animasi isyarat BISINDO di bawah jawaban ini atau menekan tombol **Dengarkan**.',
-          inputMode: null,
-          createdAt: new Date(Date.now() + 400).toISOString(),
-        };
-        offlineMessages[id] = [...(offlineMessages[id] ?? []), user, assistant];
-        return { session: { ...session }, user, assistant, model: 'offline' };
-      }
-      throw e;
-    }
+    const body: Record<string, unknown> = { content, input_mode: inputMode };
+    if (video) body.video = { id: video.id, section: video.section, t_sec: Math.max(0, Math.round(video.tSec)) };
+    const r = await api<{ session: ApiSession; user_message: ApiMessage; assistant_message: ApiMessage; model: 'openrouter' | 'offline' }>(
+      `/api/chat/sessions/${sid(id)}/messages`,
+      { method: 'POST', body: JSON.stringify(body) },
+      SEND_TIMEOUT_MS,
+    );
+    return { session: toSession(r.session), user: toMessage(r.user_message), assistant: toMessage(r.assistant_message), model: r.model };
   },
   async rename(id: string, title: string): Promise<ChatSession> {
-    try {
-      return toSession(await api<ApiSession>(`/api/chat/sessions/${sid(id)}`, { method: 'PATCH', body: JSON.stringify({ title }) }));
-    } catch (e) {
-      if (e instanceof ChatError && e.kind === 'network') {
-        const s = offlineSessions.find((x) => x.id === id);
-        if (!s) throw new ChatError('Percakapan tidak ditemukan', 'not-found');
-        s.title = title;
-        s.updatedAt = new Date().toISOString();
-        return { ...s };
-      }
-      throw e;
-    }
+    return toSession(await api<ApiSession>(`/api/chat/sessions/${sid(id)}`, { method: 'PATCH', body: JSON.stringify({ title }) }));
   },
   async remove(id: string): Promise<void> {
-    try {
-      await api<void>(`/api/chat/sessions/${sid(id)}`, { method: 'DELETE' });
-    } catch (e) {
-      if (e instanceof ChatError && e.kind === 'network') {
-        const idx = offlineSessions.findIndex((x) => x.id === id);
-        if (idx >= 0) offlineSessions.splice(idx, 1);
-        delete offlineMessages[id];
-        delete offlineDocs[id];
-        return;
-      }
-      throw e;
-    }
+    await api<void>(`/api/chat/sessions/${sid(id)}`, { method: 'DELETE' });
   },
   async uploadDocument(id: string, file: File): Promise<ChatDocument> {
-    try {
-      const form = new FormData();
-      form.append('file', file, file.name);
-      return toDocument(await api<ApiDocument>(`/api/chat/sessions/${sid(id)}/documents`, { method: 'POST', body: form }, UPLOAD_TIMEOUT_MS));
-    } catch (e) {
-      if (e instanceof ChatError && e.kind === 'network') {
-        const doc: ChatDocument = {
-          id: `doc-${Date.now()}`,
-          sessionId: id,
-          filename: file.name,
-          pageCount: 4,
-          charCount: 3200,
-          createdAt: new Date().toISOString(),
-        };
-        offlineDocs[id] = [...(offlineDocs[id] ?? []), doc];
-        return doc;
-      }
-      throw e;
-    }
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return toDocument(await api<ApiDocument>(`/api/chat/sessions/${sid(id)}/documents`, { method: 'POST', body: form }, UPLOAD_TIMEOUT_MS));
   },
   async listDocuments(): Promise<StudentDocument[]> {
-    try {
-      const r = await api<{ items: (ApiDocument & { session_title: string })[] }>('/api/chat/documents');
-      return r.items.map((d) => ({ ...toDocument(d), sessionTitle: d.session_title }));
-    } catch (e) {
-      if (e instanceof ChatError && e.kind === 'network') return [];
-      throw e;
-    }
+    const r = await api<{ items: (ApiDocument & { session_title: string })[] }>('/api/chat/documents');
+    return r.items.map((d) => ({ ...toDocument(d), sessionTitle: d.session_title }));
   },
   async activity(): Promise<ChatActivity> {
-    try {
-      const r = await api<{ days: number; video_questions: number; documents: number }>('/api/chat/activity');
-      return { days: r.days, videoQuestions: r.video_questions, documents: r.documents };
-    } catch (e) {
-      if (e instanceof ChatError && e.kind === 'network') {
-        return { days: 5, videoQuestions: 4, documents: 2 };
-      }
-      throw e;
-    }
+    const r = await api<{ days: number; video_questions: number; documents: number }>('/api/chat/activity');
+    return { days: r.days, videoQuestions: r.video_questions, documents: r.documents };
   },
 };
 

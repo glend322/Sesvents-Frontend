@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, MessageSquarePlus, MessagesSquare, Pencil, Trash2, TriangleAlert } from 'lucide-react';
+import { Check, MessageSquarePlus, MessagesSquare, Pencil, Search, SearchX, Trash2, TriangleAlert, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { chatService, type ChatSession } from '@/features/chatbot/chat.service';
 import { sessionsStore, useSessions } from '@/features/chatbot/sessions.store';
@@ -26,6 +26,9 @@ export default function HistoryPage() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [failed, setFailed] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void sessionsStore.refresh();
@@ -52,13 +55,27 @@ export default function HistoryPage() {
     setConfirming(null);
   };
 
+  const needle = query.trim().toLowerCase();
+  const filteredSessions = needle
+    ? s.sessions.filter((x) => x.title.toLowerCase().includes(needle))
+    : s.sessions;
+
   const groups: { label: string; items: ChatSession[] }[] = [];
-  for (const x of s.sessions) {
+  for (const x of filteredSessions) {
     const label = groupLabel(x.updatedAt);
     const g = groups.find((y) => y.label === label);
     if (g) g.items.push(x);
     else groups.push({ label, items: [x] });
   }
+
+  const toggleSearch = () => {
+    setSearchOpen((prev) => {
+      const next = !prev;
+      if (!next) setQuery('');
+      else window.setTimeout(() => searchInputRef.current?.focus(), 20);
+      return next;
+    });
+  };
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -67,11 +84,73 @@ export default function HistoryPage() {
         title="Percakapanmu"
         subtitle="Hanya teks yang disimpan. Video kamera tidak pernah direkam."
         actions={
-          <Button onClick={() => navigate('/chat')}>
-            <MessageSquarePlus /> Chat baru
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleSearch}
+              aria-label="Cari judul percakapan"
+              aria-expanded={searchOpen}
+              title="Cari judul percakapan"
+              className={cn(
+                'grid size-11 place-items-center rounded-2xl border transition-colors',
+                searchOpen
+                  ? 'border-tiger-ink/30 bg-cream text-tiger-ink'
+                  : 'border-line bg-white text-ink hover:bg-tint',
+              )}
+            >
+              <Search className="size-5" aria-hidden="true" />
+            </button>
+            <Button onClick={() => navigate('/chat')}>
+              <MessageSquarePlus /> Chat baru
+            </Button>
+          </div>
         }
       />
+
+      <AnimatePresence initial={false}>
+        {searchOpen && (
+          <motion.div
+            key="history-search"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18 }}
+            className="mb-5"
+          >
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+              <input
+                ref={searchInputRef}
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchOpen(false);
+                    setQuery('');
+                  }
+                }}
+                placeholder="Cari judul percakapan…"
+                aria-label="Cari judul percakapan"
+                className="h-11 w-full rounded-2xl border border-line bg-white pl-10 pr-10 text-sm text-brand-900 placeholder:text-muted focus:border-brand-400 focus:outline-none"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery('');
+                    searchInputRef.current?.focus();
+                  }}
+                  aria-label="Bersihkan pencarian"
+                  className="absolute right-2.5 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-muted hover:bg-tint hover:text-ink"
+                >
+                  <X className="size-4" aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {(failed || (s.error && s.sessions.length === 0)) && (
         <p role="alert" className="mb-4 flex items-center gap-2 rounded-2xl bg-rec-soft px-4 py-3 text-sm font-semibold text-rec">
@@ -93,6 +172,12 @@ export default function HistoryPage() {
           <Link to="/chat" className="mt-3 text-sm font-bold text-brand-600 hover:underline">
             Tanya LUNAR sekarang
           </Link>
+        </div>
+      ) : filteredSessions.length === 0 ? (
+        <div className="grid place-items-center rounded-3xl border-2 border-dashed border-brand-100 bg-white/60 p-10 text-center">
+          <SearchX className="size-8 text-brand-200" aria-hidden="true" />
+          <p className="mt-3 font-extrabold">Percakapan tidak ditemukan</p>
+          <p className="mt-1 text-sm text-muted">Tidak ada percakapan dengan judul “{query.trim()}”.</p>
         </div>
       ) : (
         groups.map((g) => (
