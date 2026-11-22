@@ -7,7 +7,7 @@ import type { LoginResult, SiswaProfile } from './types';
  */
 export interface AuthService {
   login(email: string, password: string): Promise<LoginResult>;
-  register(fullName: string, email: string, password: string): Promise<LoginResult>;
+  register(fullName: string, email: string, password: string, phone?: string): Promise<LoginResult>;
   completeProfile(accessToken: string, data: { grade?: number; classCode?: string | null; fullName?: string }): Promise<SiswaProfile | null>;
   forgotPassword(email: string): Promise<boolean>;
   logout(accessToken?: string): Promise<void>;
@@ -26,6 +26,8 @@ export const readyAccounts = demoEmail && demoPassword ? [{ email: demoEmail, pa
 type ApiStudent = {
   id: string;
   email?: string | null;
+  phone?: string | null;
+  phone_number?: string | null;
   nis?: string | null;
   full_name: string;
   class_name?: string | null;
@@ -39,6 +41,7 @@ type ApiLoginResponse = { access_token: string; token_type: 'bearer'; expires_in
 export const toProfile = (s: ApiStudent): SiswaProfile => ({
   id: s.id,
   email: s.email?.trim() || s.nis?.trim() || '',
+  phone: s.phone?.trim() || s.phone_number?.trim() || undefined,
   nis: s.nis ?? undefined,
   name: s.full_name,
   className: s.class_name ?? undefined,
@@ -77,8 +80,13 @@ async function postAuth(path: string, body: unknown): Promise<LoginResult> {
 
 export const httpAuthService: AuthService = {
   login: (email, password) => postAuth('/api/student/auth/login', { email, password }),
-  register: (fullName, email, password) =>
-    postAuth('/api/student/auth/register', { full_name: fullName, email, password }),
+  register: (fullName, email, password, phone) =>
+    postAuth('/api/student/auth/register', {
+      full_name: fullName,
+      email,
+      password,
+      ...(phone ? { phone, phone_number: phone } : {}),
+    }),
   async completeProfile(accessToken, data) {
     const payload: Record<string, unknown> = {};
     if (data.fullName !== undefined) payload.full_name = data.fullName;
@@ -131,9 +139,14 @@ export const httpAuthService: AuthService = {
 export const authService: AuthService = httpAuthService;
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const PHONE_NUMBER_RE = /^\d+$/;
 
 export function isValidEmail(email: string): boolean {
   return EMAIL_RE.test(email.trim());
+}
+
+export function isValidPhone(phone: string): boolean {
+  return PHONE_NUMBER_RE.test(phone.trim());
 }
 
 export function validateCredentialLengths(email: string, password: string): string | null {

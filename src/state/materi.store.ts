@@ -75,7 +75,7 @@ export function useMateriStore(studentId: string) {
   const markOpened = useCallback(
     (id: string) => {
       const d = read(studentId);
-      write(studentId, { ...d, recent: [{ id, at: Date.now() }, ...d.recent.filter((r) => r.id !== id)].slice(0, 12) });
+      write(studentId, { ...d, recent: [{ id, at: Date.now() }, ...d.recent.filter((r) => r.id !== id)].slice(0, 50) });
     },
     [studentId],
   );

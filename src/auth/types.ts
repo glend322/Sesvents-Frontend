@@ -4,6 +4,8 @@ export type SiswaProfile = {
   id: string;
   /** Email login siswa. */
   email: string;
+  /** Nomor telepon siswa. */
+  phone?: string;
   /** Opsional: Nomor Induk Siswa (jika akun sekolah). */
   nis?: string;
   name: string;

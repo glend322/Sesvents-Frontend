@@ -8,7 +8,7 @@ import { Logo } from '@/components/ui/logo';
 import { APP } from '@/config/app.config';
 import { cn } from '@/lib/utils';
 import { AUTH } from '../auth.config';
-import { isValidEmail, validateCredentialLengths } from '../auth.service';
+import { isValidEmail, isValidPhone, validateCredentialLengths } from '../auth.service';
 import { useAuth } from '../AuthContext';
 import { Field } from '../components/Field';
 import { ForgotPasswordDialog } from './ForgotPasswordDialog';
@@ -41,6 +41,7 @@ export function LoginPage() {
   const [mode, setMode] = useState<AuthMode>('login');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [grade, setGrade] = useState<number>(5);
   const [classCode, setClassCode] = useState('');
@@ -48,7 +49,7 @@ export function LoginPage() {
   const [message, setMessage] = useState<ReactNode>(null);
   /** Server tak terjangkau (kotak terpisah di bawah). */
   const [netError, setNetError] = useState(false);
-  const [fieldError, setFieldError] = useState<{ fullName?: string; email?: string; password?: string }>({});
+  const [fieldError, setFieldError] = useState<{ fullName?: string; email?: string; phone?: string; password?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [lockUntil, setLockUntil] = useState<number | null>(null);
@@ -91,12 +92,18 @@ export function LoginPage() {
   };
 
   const onEdit =
-    (setter: (v: string) => void, key: 'fullName' | 'email' | 'password') =>
+    (setter: (v: string) => void, key: 'fullName' | 'email' | 'phone' | 'password') =>
     (value: string) => {
       setter(value);
       if (!locked) setMessage(null);
       setNetError(false);
-      setFieldError((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+      if (key === 'phone') {
+        const trimmed = value.trim();
+        const phoneErr = trimmed && !isValidPhone(trimmed) ? 'Nomor telepon harus berupa angka.' : undefined;
+        setFieldError((prev) => (prev.phone !== phoneErr ? { ...prev, phone: phoneErr } : prev));
+      } else {
+        setFieldError((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+      }
       if (endedReason) clearEndedReason();
     };
 
@@ -166,6 +173,7 @@ export function LoginPage() {
 
     const cleanName = fullName.trim();
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.trim();
     const pass = password;
     const missing: typeof fieldError = {};
 
@@ -177,13 +185,18 @@ export function LoginPage() {
     } else if (!isValidEmail(cleanEmail)) {
       missing.email = 'Format email belum sesuai (contoh: nadia.putri@gmail.com).';
     }
+    if (!cleanPhone) {
+      missing.phone = 'Isi nomor teleponmu dulu, ya.';
+    } else if (!isValidPhone(cleanPhone)) {
+      missing.phone = 'Nomor telepon harus berupa angka.';
+    }
     if (!pass.trim()) {
       missing.password = 'Isi password-mu dulu, ya.';
     } else if (pass.length < AUTH.minPasswordLength) {
       missing.password = `Minimal ${AUTH.minPasswordLength} huruf atau angka.`;
     }
 
-    if (missing.fullName || missing.email || missing.password) {
+    if (missing.fullName || missing.email || missing.phone || missing.password) {
       setFieldError(missing);
       return;
     }
@@ -197,7 +210,7 @@ export function LoginPage() {
     setSubmitting(true);
     setMessage(null);
     setNetError(false);
-    const result = await register(cleanName, cleanEmail, pass);
+    const result = await register(cleanName, cleanEmail, pass, cleanPhone);
     setSubmitting(false);
 
     if (result.ok) {
@@ -438,6 +451,20 @@ export function LoginPage() {
                       inputMode="email"
                       spellCheck={false}
                       error={fieldError.email}
+                    />
+
+                    <Field
+                      label="Nomor telepon"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => onEdit(setPhone, 'phone')(e.target.value)}
+                      onFocus={() => setTypingField(true)}
+                      onBlur={() => setTypingField(false)}
+                      placeholder="081234567890"
+                      autoComplete="tel"
+                      inputMode="numeric"
+                      spellCheck={false}
+                      error={fieldError.phone}
                     />
 
                     <Field

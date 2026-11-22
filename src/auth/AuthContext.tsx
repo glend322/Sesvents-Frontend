@@ -16,7 +16,7 @@ type Ctx = {
   endedReason: SessionEndedReason | null;
   clearEndedReason: () => void;
   login: (email: string, password: string) => Promise<LoginResult>;
-  register: (fullName: string, email: string, password: string) => Promise<LoginResult>;
+  register: (fullName: string, email: string, password: string, phone?: string) => Promise<LoginResult>;
   updateProfile: (data: { grade?: number; classCode?: string | null; fullName?: string }) => Promise<boolean>;
   /** reason 'expired' dipakai saat BE menolak token (401). false = data sesi gagal dihapus. */
   logout: (reason?: SessionEndedReason) => boolean;
@@ -109,8 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result;
   }, []);
 
-  const register = useCallback<Ctx['register']>(async (fullName, email, password) => {
-    const result = await authService.register(fullName, email, password);
+  const register = useCallback<Ctx['register']>(async (fullName, email, password, phone) => {
+    const result = await authService.register(fullName, email, password, phone);
     if (result.ok) {
       setEndedReason(null);
       setSession(sessionStore.create(result.profile, result.tokens));
