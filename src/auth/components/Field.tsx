@@ -2,26 +2,38 @@ import { useId, useState, type InputHTMLAttributes, type ReactNode } from 'react
 import { CircleAlert, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'id' | 'type'> & {
+type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> & {
   label: string;
-  /** Ikon penanda di sisi kiri dalam field. */
-  icon: ReactNode;
-  /** Field password mendapat tombol perlihatkan/sembunyikan karakter. */
+  /** Ikon penanda opsional di sisi kiri dalam field. */
+  icon?: ReactNode;
+  /** Field password. */
   password?: boolean;
+  /** Tampilkan tombol mata untuk melihat password (opsional). */
+  showPasswordToggle?: boolean;
+  /** Teks petunjuk di bawah input (mis. "Minimal 8 huruf atau angka."). */
+  hint?: ReactNode;
   /** Pesan kesalahan khusus field ini. */
   error?: string | null;
 };
 
 /**
- * Field form dengan label terkait, ikon penanda di kiri, dan (untuk password)
- * tombol perlihatkan/sembunyikan karakter (Requirement 3).
- *
- * Label selalu berupa elemen <label> yang terhubung ke input lewat id, jadi
- * pembaca layar membacakannya saat field menerima fokus.
+ * Field form dengan label terkait.
+ * Kolom aktif: garis hitam tebal + bayangan krem tipis (focus:border-2 focus:border-ink focus:shadow-[0_0_0_4px_var(--color-cream)]).
  */
-export function Field({ label, icon, password = false, error, className, ...rest }: Props) {
+export function Field({
+  label,
+  icon,
+  password = false,
+  showPasswordToggle = false,
+  hint,
+  error,
+  className,
+  type = 'text',
+  ...rest
+}: Props) {
   const id = useId();
   const errorId = `${id}-error`;
+  const hintId = `${id}-hint`;
   const [visible, setVisible] = useState(false);
 
   return (
@@ -31,27 +43,33 @@ export function Field({ label, icon, password = false, error, className, ...rest
       </label>
 
       <div className="relative">
-        <span className="pointer-events-none absolute left-4 top-1/2 grid -translate-y-1/2 place-items-center text-muted" aria-hidden="true">
-          {icon}
-        </span>
+        {icon && (
+          <span
+            className="pointer-events-none absolute left-4 top-1/2 grid -translate-y-1/2 place-items-center text-muted"
+            aria-hidden="true"
+          >
+            {icon}
+          </span>
+        )}
 
         <input
           id={id}
-          type={password && !visible ? 'password' : 'text'}
+          type={password ? (visible ? 'text' : 'password') : type}
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={error ? errorId : hint ? hintId : undefined}
           className={cn(
-            'h-14 w-full rounded-xl border-[1.5px] bg-white pl-12 text-base text-ink placeholder:text-[#a39b90] transition-shadow',
+            'h-13 w-full rounded-xl border-[1.5px] bg-white text-base text-ink placeholder:text-[#a39b90] transition-shadow sm:h-14',
             // Kolom aktif: garis hitam tebal + bayangan krem tipis (bukan glow berwarna).
             'focus:border-2 focus:border-ink focus:shadow-[0_0_0_4px_var(--color-cream)] focus:outline-none',
-            password ? 'pr-12' : 'pr-4',
+            icon ? 'pl-12' : 'pl-4',
+            password && showPasswordToggle ? 'pr-12' : 'pr-4',
             error ? 'border-rec focus:border-rec' : 'border-line',
             className,
           )}
           {...rest}
         />
 
-        {password && (
+        {password && showPasswordToggle && (
           <button
             type="button"
             onClick={() => setVisible((v) => !v)}
@@ -64,12 +82,16 @@ export function Field({ label, icon, password = false, error, className, ...rest
         )}
       </div>
 
-      {error && (
+      {error ? (
         <p id={errorId} className="flex items-center gap-1.5 text-sm text-rec">
           <CircleAlert className="size-4 shrink-0" aria-hidden="true" />
           {error}
         </p>
-      )}
+      ) : hint ? (
+        <p id={hintId} className="text-[0.8125rem] text-muted">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }
