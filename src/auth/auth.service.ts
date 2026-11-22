@@ -76,36 +76,6 @@ async function postAuth(path: string, body: unknown): Promise<LoginResult> {
 }
 
 export const httpAuthService: AuthService = {
-<<<<<<< HEAD
-  async login(nis, password) {
-    const res = await postAuth('/api/student/auth/login', { nis, password });
-    if (!res.ok && res.reason === 'service-error') {
-      // Fallback offline agar seluruh UI bisa dibuka saat backend belum berjalan
-      const displayName = nis.includes('@')
-        ? nis
-            .split('@')[0]
-            .replace(/[._-]+/g, ' ')
-            .replace(/\b\w/g, (c) => c.toUpperCase())
-        : 'Nadia Putri';
-      return {
-        ok: true,
-        profile: {
-          id: 'offline-preview-student',
-          nis: nis === 'google-oauth' ? 'nadia.putri@gmail.com' : nis,
-          name: nis === 'google-oauth' ? 'Nadia Putri' : displayName,
-          className: '5A',
-          grade: 5,
-          school: 'SLB Negeri 1 Yogyakarta',
-        },
-        tokens: {
-          accessToken: 'offline-preview-access-token',
-          refreshToken: 'offline-preview-refresh-token',
-          expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-        },
-      };
-    }
-    return res;
-=======
   login: (email, password) => postAuth('/api/student/auth/login', { email, password }),
   register: (fullName, email, password) =>
     postAuth('/api/student/auth/register', { full_name: fullName, email, password }),
@@ -151,27 +121,8 @@ export const httpAuthService: AuthService = {
     } catch {
       // Best-effort tracking logout; never blocks client logout.
     }
->>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
   },
   async refresh(refreshToken) {
-    if (refreshToken === 'offline-preview-refresh-token') {
-      return {
-        ok: true,
-        profile: {
-          id: 'offline-preview-student',
-          nis: 'nadia.putri@gmail.com',
-          name: 'Nadia Putri',
-          className: '5A',
-          grade: 5,
-          school: 'SLB Negeri 1 Yogyakarta',
-        },
-        tokens: {
-          accessToken: 'offline-preview-access-token',
-          refreshToken: 'offline-preview-refresh-token',
-          expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-        },
-      };
-    }
     const r = await postAuth('/api/student/auth/refresh', { refresh_token: refreshToken });
     return !r.ok && r.reason === 'invalid-credentials' ? { ok: false, reason: 'invalid' } : r;
   },

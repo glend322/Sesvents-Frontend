@@ -1,29 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-<<<<<<< HEAD
 import { AnimatePresence, motion } from 'framer-motion';
-import { CircleAlert, Clock, Info, LoaderCircle, Wifi } from 'lucide-react';
+import { CircleAlert, Clock, Hash, Info, LoaderCircle, Wifi } from 'lucide-react';
 import { TigerMascot, type MascotMood } from '@/components/mascot/TigerMascot';
-=======
-import { motion } from 'framer-motion';
-import { CircleAlert, Clock, Hash, Info, LoaderCircle, Lock, Mail, User, Wifi } from 'lucide-react';
-import { TigerMascot } from '@/components/mascot/TigerMascot';
->>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
 import { APP } from '@/config/app.config';
 import { cn } from '@/lib/utils';
 import { AUTH } from '../auth.config';
-<<<<<<< HEAD
-import { validateCredentialLengths } from '../auth.service';
-=======
-import { isValidEmail, readyAccounts, validateCredentialLengths } from '../auth.service';
->>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
+import { isValidEmail, validateCredentialLengths } from '../auth.service';
 import { useAuth } from '../AuthContext';
 import { Field } from '../components/Field';
 import { ForgotPasswordDialog } from './ForgotPasswordDialog';
 
-<<<<<<< HEAD
 /**
  * Halaman Masuk & Buat Akun (Email + Password).
  * - Mode Masuk: Email, Password, Masuk, Belum punya akun? Daftar, Lupa password?.
@@ -31,12 +20,8 @@ import { ForgotPasswordDialog } from './ForgotPasswordDialog';
  *   kotak pengingat orang tua/guru, Daftar, Sudah punya akun? Masuk.
  * - Transisi antar mode Masuk & Buat Akun dibuat seragam dan stabil (posisi banner & maskot tidak melompat).
  */
-type AuthMode = 'login' | 'register';
-=======
 type AuthMode = 'login' | 'register' | 'onboarding';
->>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
 
-const hintAccounts = readyAccounts;
 const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 const GRADES = [4, 5, 6] as const;
 
@@ -57,13 +42,11 @@ export function LoginPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-<<<<<<< HEAD
-  /** Pesan salah email/password (kotak merah muda di atas form). */
-=======
   const [grade, setGrade] = useState<number>(5);
   const [classCode, setClassCode] = useState('');
->>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
+  /** Pesan salah email/password (kotak merah muda di atas form). */
   const [message, setMessage] = useState<ReactNode>(null);
+  /** Server tak terjangkau (kotak terpisah di bawah). */
   const [netError, setNetError] = useState(false);
   const [fieldError, setFieldError] = useState<{ fullName?: string; email?: string; password?: string }>({});
   const [submitting, setSubmitting] = useState(false);
@@ -78,7 +61,6 @@ export function LoginPage() {
   const mascotMood: MascotMood = submitting ? 'thinking' : typingField ? 'typing' : 'idle';
 
   useEffect(() => {
-    // Jangan redirect otomatis jika baru selesai daftar dan sedang di Langkah 2 (onboarding).
     if (isAuthenticated && mode !== 'onboarding') {
       navigate(from || '/chat', { replace: true });
     }
@@ -100,29 +82,14 @@ export function LoginPage() {
     return () => window.clearInterval(id);
   }, [lockUntil]);
 
-<<<<<<< HEAD
-  const switchMode = (nextMode: AuthMode) => {
+  const switchMode = (nextMode: 'login' | 'register') => {
     setMode(nextMode);
     setMessage(null);
-=======
-  const switchMode = (next: 'login' | 'register') => {
-    setMode(next);
-    setMessage(null);
     setNetError(false);
     setFieldError({});
     if (endedReason) clearEndedReason();
   };
 
-  const onEdit = (setter: (v: string) => void, key: 'fullName' | 'email' | 'password') => (value: string) => {
-    setter(value);
-    if (!locked) setMessage(null);
->>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
-    setNetError(false);
-    setFieldError({});
-    if (endedReason) clearEndedReason();
-  };
-
-<<<<<<< HEAD
   const onEdit =
     (setter: (v: string) => void, key: 'fullName' | 'email' | 'password') =>
     (value: string) => {
@@ -133,35 +100,6 @@ export function LoginPage() {
       if (endedReason) clearEndedReason();
     };
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (locked || submitting) return;
-
-    const cleanName = fullName.trim();
-    const cleanEmail = email.trim();
-    const pass = password;
-    const missing: typeof fieldError = {};
-
-    if (mode === 'register' && !cleanName) {
-      missing.fullName = 'Isi nama lengkapmu dulu, ya.';
-    }
-    if (!cleanEmail) {
-      missing.email = 'Isi email kamu dulu, ya.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      missing.email = 'Format email belum sesuai (contoh: nadia.putri@gmail.com).';
-    }
-    if (!pass.trim()) {
-      missing.password = 'Isi password-mu dulu, ya.';
-    } else if (mode === 'register' && pass.length < 8) {
-      missing.password = 'Minimal 8 huruf atau angka.';
-    }
-
-    if (missing.fullName || missing.email || missing.password) {
-      setFieldError(missing);
-      return;
-    }
-
-=======
   const onSubmitLogin = async (e: FormEvent) => {
     e.preventDefault();
     if (locked || submitting) return;
@@ -169,14 +107,21 @@ export function LoginPage() {
     const cleanEmail = email.trim().toLowerCase();
     const pass = password;
     const missing: typeof fieldError = {};
-    if (!cleanEmail) missing.email = 'Isi email-mu dulu, ya.';
-    else if (!isValidEmail(cleanEmail)) missing.email = 'Format email belum benar (contoh: nama@gmail.com).';
-    if (!pass.trim()) missing.password = 'Isi password-mu dulu, ya.';
+
+    if (!cleanEmail) {
+      missing.email = 'Isi email kamu dulu, ya.';
+    } else if (!isValidEmail(cleanEmail)) {
+      missing.email = 'Format email belum sesuai (contoh: nadia.putri@gmail.com).';
+    }
+    if (!pass.trim()) {
+      missing.password = 'Isi password-mu dulu, ya.';
+    }
+
     if (missing.email || missing.password) {
       setFieldError(missing);
       return;
     }
->>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
+
     const tooLong = validateCredentialLengths(cleanEmail, pass);
     if (tooLong) {
       setMessage(tooLong);
@@ -207,7 +152,7 @@ export function LoginPage() {
       setLockUntil(Date.now() + AUTH.lockoutMs);
       return;
     }
-    setFieldError({ password: 'Cek lagi email dan huruf besar/kecil password.' });
+    setFieldError({ password: 'Cek lagi huruf besar dan kecil.' });
     setMessage(
       <>
         Email atau password belum cocok. Sisa <b className="font-bold">{AUTH.maxAttempts - next} kali</b> coba lagi.
@@ -215,9 +160,6 @@ export function LoginPage() {
     );
   };
 
-<<<<<<< HEAD
-  if (loading || isAuthenticated) {
-=======
   const onSubmitRegister = async (e: FormEvent) => {
     e.preventDefault();
     if (submitting) return;
@@ -226,16 +168,26 @@ export function LoginPage() {
     const cleanEmail = email.trim().toLowerCase();
     const pass = password;
     const missing: typeof fieldError = {};
-    if (!cleanName) missing.fullName = 'Isi nama panggilanmu dulu, ya.';
-    if (!cleanEmail) missing.email = 'Isi email-mu dulu, ya.';
-    else if (!isValidEmail(cleanEmail)) missing.email = 'Format email belum benar (contoh: nama@gmail.com).';
-    if (pass.length < AUTH.minPasswordLength) {
-      missing.password = `Password minimal ${AUTH.minPasswordLength} huruf atau angka.`;
+
+    if (!cleanName) {
+      missing.fullName = 'Isi nama lengkapmu dulu, ya.';
     }
+    if (!cleanEmail) {
+      missing.email = 'Isi email kamu dulu, ya.';
+    } else if (!isValidEmail(cleanEmail)) {
+      missing.email = 'Format email belum sesuai (contoh: nadia.putri@gmail.com).';
+    }
+    if (!pass.trim()) {
+      missing.password = 'Isi password-mu dulu, ya.';
+    } else if (pass.length < AUTH.minPasswordLength) {
+      missing.password = `Minimal ${AUTH.minPasswordLength} huruf atau angka.`;
+    }
+
     if (missing.fullName || missing.email || missing.password) {
       setFieldError(missing);
       return;
     }
+
     const tooLong = validateCredentialLengths(cleanEmail, pass);
     if (tooLong) {
       setMessage(tooLong);
@@ -267,21 +219,15 @@ export function LoginPage() {
     if (submitting) return;
     setSubmitting(true);
     setNetError(false);
-    const ok = await updateProfile({
+    await updateProfile({
       grade,
       classCode: skipCode ? null : classCode.trim() || null,
     });
     setSubmitting(false);
-    if (ok) {
-      navigate(from || '/chat', { replace: true });
-    } else {
-      // Tetap izinkan masuk agar onboarding tidak memblokir siswa belajar.
-      navigate(from || '/chat', { replace: true });
-    }
+    navigate(from || '/chat', { replace: true });
   };
 
   if (loading || (isAuthenticated && mode !== 'onboarding')) {
->>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
     return (
       <div className="grid min-h-dvh place-items-center bg-sand" role="status" aria-live="polite">
         <span className="flex items-center gap-2 text-sm text-muted">
@@ -298,10 +244,7 @@ export function LoginPage() {
         ? 'Kamu sudah keluar. Sampai jumpa lagi!'
         : null;
 
-<<<<<<< HEAD
   const isRegister = mode === 'register';
-=======
->>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
   const compact = !!message || locked || !!notice;
   const firstName = (profile?.name || fullName || 'Teman').trim().split(/\s+/)[0];
 
@@ -323,34 +266,12 @@ export function LoginPage() {
           <Logo />
         </a>
 
-<<<<<<< HEAD
         {/* Maskot di Desktop: tinggi & posisi tetap sama persis di mode Masuk maupun Buat Akun */}
         <div className="relative z-10 my-auto hidden shrink-0 items-center justify-center py-2 lg:flex">
           <TigerMascot
             mood={mascotMood}
             className="h-[15rem] w-[12.75rem] xl:h-[17rem] xl:w-[14.5rem]"
           />
-=======
-        <div className="relative z-10 mt-8 max-w-[16rem] sm:max-w-sm lg:mt-auto lg:max-w-md">
-          <h1 className="text-[1.625rem] font-black uppercase leading-[1.1] tracking-[0.01em] text-ink lg:text-[2.75rem]">
-            {mode === 'register'
-              ? 'Buat akun, yuk'
-              : mode === 'onboarding'
-                ? `Sedikit lagi, ${firstName}!`
-                : compact
-                  ? 'Masuk dulu, yuk'
-                  : 'Masuk untuk mulai belajar'}
-          </h1>
-          {!compact && (
-            <p className="mt-3 text-base leading-relaxed text-ink lg:text-lg">
-              {mode === 'register'
-                ? 'Daftar pakai email supaya bisa langsung belajar di LUNAR.'
-                : mode === 'onboarding'
-                  ? 'Biar materinya pas buat kamu.'
-                  : 'Pakai email dan password akun LUNAR kamu.'}
-            </p>
-          )}
->>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
         </div>
 
         {/* Teks Judul & Subjudul dengan tinggi tetap (fixed height) agar posisi maskot & teks tidak bergeser sedikit pun */}
@@ -366,15 +287,19 @@ export function LoginPage() {
               <h1 className="max-w-[16.5rem] text-[1.625rem] font-black uppercase leading-[1.08] tracking-[0.01em] text-ink sm:max-w-sm sm:text-[2rem] lg:max-w-md lg:text-[2.45rem] xl:text-[2.7rem]">
                 {isRegister
                   ? 'Buat akun, yuk'
-                  : compact
-                    ? 'Masuk dulu, yuk'
-                    : 'Masuk untuk mulai belajar'}
+                  : mode === 'onboarding'
+                    ? `Sedikit lagi, ${firstName}!`
+                    : compact
+                      ? 'Masuk dulu, yuk'
+                      : 'Masuk untuk mulai belajar'}
               </h1>
               {!compact && (
                 <p className="mt-2.5 max-w-[12.75rem] text-[0.9375rem] leading-snug text-ink sm:max-w-xs sm:text-base lg:mt-3 lg:max-w-md lg:text-[1.0625rem]">
                   {isRegister
                     ? 'Daftar dengan mudah untuk mulai belajar bersama LUNAR.'
-                    : 'Pakai email dan password akunmu.'}
+                    : mode === 'onboarding'
+                      ? 'Biar materinya pas buat kamu.'
+                      : 'Pakai email dan password akunmu.'}
                 </p>
               )}
             </motion.div>
@@ -394,7 +319,6 @@ export function LoginPage() {
         <MobileWaveDivider />
       </section>
 
-<<<<<<< HEAD
       {/* ==================== PANEL PUTIH / FORM ==================== */}
       <section className="relative z-10 flex flex-1 flex-col bg-white px-6 pb-8 pt-6 sm:px-10 lg:items-center lg:justify-center lg:px-10 lg:py-12 xl:px-14">
         <div className="mx-auto flex w-full max-w-[26rem] flex-1 flex-col justify-center lg:mx-0 lg:flex-none">
@@ -408,7 +332,7 @@ export function LoginPage() {
               className="flex w-full flex-col"
             >
               <div aria-live="polite" role="status">
-                {locked ? (
+                {locked && mode === 'login' ? (
                   <Alert tone="cream" icon={<Clock />}>
                     Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi.
                   </Alert>
@@ -416,17 +340,17 @@ export function LoginPage() {
                   <Alert tone="error" icon={<CircleAlert />}>
                     {message}
                   </Alert>
-                ) : notice ? (
+                ) : notice && mode === 'login' ? (
                   <Alert tone="cream" icon={<Info />}>
                     {notice}
                   </Alert>
                 ) : null}
               </div>
 
-              {mode === 'login' ? (
+              {mode === 'login' && (
                 /* ---------------- FORM MASUK ---------------- */
                 <>
-                  <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
+                  <form onSubmit={onSubmitLogin} noValidate className="flex flex-col gap-5">
                     <Field
                       label="Email"
                       type="email"
@@ -485,10 +409,12 @@ export function LoginPage() {
                     </button>
                   </div>
                 </>
-              ) : (
+              )}
+
+              {mode === 'register' && (
                 /* ---------------- FORM BUAT AKUN ---------------- */
                 <>
-                  <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+                  <form onSubmit={onSubmitRegister} noValidate className="flex flex-col gap-4">
                     <Field
                       label="Nama lengkap"
                       value={fullName}
@@ -556,6 +482,73 @@ export function LoginPage() {
                 </>
               )}
 
+              {mode === 'onboarding' && (
+                /* ---------------- LANGKAH 2: ONBOARDING KELAS ---------------- */
+                <div className="flex flex-col gap-5">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-tiger-ink">Langkah 2 dari 2</p>
+                    <div className="mt-2 h-1.5 w-full rounded-full bg-tiger" />
+                  </div>
+
+                  <div>
+                    <p className="mb-2.5 text-[0.9375rem] font-semibold text-ink">Kamu kelas berapa?</p>
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {GRADES.map((g) => (
+                        <button
+                          key={g}
+                          type="button"
+                          onClick={() => setGrade(g)}
+                          className={cn(
+                            'h-12 rounded-xl border-[1.5px] text-sm font-bold transition-colors',
+                            grade === g ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink hover:border-ink/40',
+                          )}
+                        >
+                          SD {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Field
+                    label="Kode kelas dari sekolah (opsional)"
+                    icon={<Hash className="size-5" strokeWidth={1.8} />}
+                    value={classCode}
+                    onChange={(e) => setClassCode(e.target.value)}
+                    placeholder="Contoh: LNR-5A21"
+                    spellCheck={false}
+                  />
+
+                  <p className="rounded-2xl bg-brand-50 px-4 py-3 text-xs leading-relaxed text-brand-800">
+                    Punya kode dari guru? Isi supaya gurumu bisa melihat progres belajarmu. Tidak punya? Lewati saja.
+                  </p>
+
+                  <Button
+                    type="button"
+                    size="lg"
+                    disabled={submitting}
+                    onClick={() => void onFinishOnboarding(false)}
+                    className="w-full text-base"
+                  >
+                    {submitting ? (
+                      <>
+                        <LoaderCircle className="anim-spin" aria-hidden="true" /> Menyimpan…
+                      </>
+                    ) : (
+                      'Mulai belajar'
+                    )}
+                  </Button>
+
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => void onFinishOnboarding(true)}
+                    className="mx-auto rounded-lg px-2 py-1 text-sm font-semibold text-muted underline-offset-4 hover:text-ink hover:underline"
+                  >
+                    Lewati kode kelas
+                  </button>
+                </div>
+              )}
+
               {netError && (
                 <div className="mt-6">
                   <Alert tone="error" icon={<Wifi />} role="alert">
@@ -566,247 +559,6 @@ export function LoginPage() {
             </motion.div>
           </AnimatePresence>
         </div>
-=======
-      {/* ---------- Form ---------- */}
-      <section className="relative z-10 -mt-6 flex flex-1 flex-col rounded-t-3xl bg-white px-6 pb-6 pt-7 lg:mt-0 lg:items-center lg:justify-center lg:rounded-none lg:px-10">
-        <motion.div
-          key={mode}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className="flex w-full flex-1 flex-col lg:max-w-[26rem] lg:flex-none"
-        >
-          <div aria-live="polite" role="status">
-            {locked && mode === 'login' ? (
-              <Alert tone="cream" icon={<Clock />}>
-                Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi.
-              </Alert>
-            ) : message ? (
-              <Alert tone="error" icon={<CircleAlert />}>
-                {message}
-              </Alert>
-            ) : notice && mode === 'login' ? (
-              <Alert tone="cream" icon={<Info />}>
-                {notice}
-              </Alert>
-            ) : null}
-          </div>
-
-          {mode === 'login' && (
-            <form onSubmit={onSubmitLogin} noValidate className="flex flex-col gap-5">
-              <Field
-                label="Email"
-                icon={<Mail className="size-5" strokeWidth={1.8} />}
-                value={email}
-                onChange={(e) => onEdit(setEmail, 'email')(e.target.value)}
-                placeholder="nadia.putri@gmail.com"
-                autoComplete="email"
-                inputMode="email"
-                spellCheck={false}
-                error={fieldError.email}
-              />
-              <Field
-                label="Password"
-                password
-                icon={<Lock className="size-5" strokeWidth={1.8} />}
-                value={password}
-                onChange={(e) => onEdit(setPassword, 'password')(e.target.value)}
-                placeholder="Masukkan password"
-                autoComplete="current-password"
-                error={fieldError.password}
-              />
-
-              <Button type="submit" size="lg" disabled={submitting || locked} className="mt-1 w-full text-base">
-                {locked ? (
-                  <span className="tabular-nums">Coba lagi dalam {mmss(lockLeft)}</span>
-                ) : submitting ? (
-                  <>
-                    <LoaderCircle className="anim-spin" aria-hidden="true" /> Memeriksa…
-                  </>
-                ) : (
-                  'Masuk'
-                )}
-              </Button>
-
-              <div className="flex flex-col items-center gap-1.5 pt-1 text-[0.9375rem]">
-                <button
-                  type="button"
-                  onClick={() => switchMode('register')}
-                  className="rounded-lg px-2 py-1 font-semibold text-tiger-ink underline-offset-4 hover:underline"
-                >
-                  Belum punya akun? Daftar
-                </button>
-                <button
-                  ref={forgotRef}
-                  type="button"
-                  onClick={() => setForgotOpen(true)}
-                  className="rounded-lg px-2 py-0.5 text-sm font-medium text-muted underline-offset-4 hover:text-ink hover:underline"
-                >
-                  Lupa password?
-                </button>
-              </div>
-            </form>
-          )}
-
-          {mode === 'register' && (
-            <form onSubmit={onSubmitRegister} noValidate className="flex flex-col gap-4">
-              <Field
-                label="Nama panggilan"
-                icon={<User className="size-5" strokeWidth={1.8} />}
-                value={fullName}
-                onChange={(e) => onEdit(setFullName, 'fullName')(e.target.value)}
-                placeholder="Nadia"
-                autoComplete="name"
-                error={fieldError.fullName}
-              />
-              <Field
-                label="Email"
-                icon={<Mail className="size-5" strokeWidth={1.8} />}
-                value={email}
-                onChange={(e) => onEdit(setEmail, 'email')(e.target.value)}
-                placeholder="nadia.putri@gmail.com"
-                autoComplete="email"
-                inputMode="email"
-                spellCheck={false}
-                error={fieldError.email}
-              />
-              <Field
-                label="Password"
-                password
-                icon={<Lock className="size-5" strokeWidth={1.8} />}
-                value={password}
-                onChange={(e) => onEdit(setPassword, 'password')(e.target.value)}
-                placeholder="Minimal 8 huruf atau angka"
-                autoComplete="new-password"
-                error={fieldError.password}
-              />
-
-              <p className="rounded-2xl bg-cream px-4 py-3 text-xs leading-relaxed text-ink">
-                Untuk anak di bawah 13 tahun, minta <b>orang tua atau guru</b> membantu membuat akun.
-              </p>
-
-              <Button type="submit" size="lg" disabled={submitting} className="mt-1 w-full text-base">
-                {submitting ? (
-                  <>
-                    <LoaderCircle className="anim-spin" aria-hidden="true" /> Mendaftarkan…
-                  </>
-                ) : (
-                  'Daftar'
-                )}
-              </Button>
-
-              <button
-                type="button"
-                onClick={() => switchMode('login')}
-                className="mx-auto rounded-lg px-2 py-1 text-[0.9375rem] font-semibold text-tiger-ink underline-offset-4 hover:underline"
-              >
-                Sudah punya akun? Masuk
-              </button>
-            </form>
-          )}
-
-          {mode === 'onboarding' && (
-            <div className="flex flex-col gap-5">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-tiger-ink">Langkah 2 dari 2</p>
-                <div className="mt-2 h-1.5 w-full rounded-full bg-tiger" />
-              </div>
-
-              <div>
-                <p className="mb-2.5 text-[0.9375rem] font-semibold text-ink">Kamu kelas berapa?</p>
-                <div className="grid grid-cols-3 gap-2.5">
-                  {GRADES.map((g) => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => setGrade(g)}
-                      className={cn(
-                        'h-12 rounded-xl border-[1.5px] text-sm font-bold transition-colors',
-                        grade === g ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink hover:border-ink/40',
-                      )}
-                    >
-                      SD {g}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <Field
-                label="Kode kelas dari sekolah (opsional)"
-                icon={<Hash className="size-5" strokeWidth={1.8} />}
-                value={classCode}
-                onChange={(e) => setClassCode(e.target.value)}
-                placeholder="Contoh: LNR-5A21"
-                spellCheck={false}
-              />
-
-              <p className="rounded-2xl bg-brand-50 px-4 py-3 text-xs leading-relaxed text-brand-800">
-                Punya kode dari guru? Isi supaya gurumu bisa melihat progres belajarmu. Tidak punya? Lewati saja.
-              </p>
-
-              <Button
-                type="button"
-                size="lg"
-                disabled={submitting}
-                onClick={() => void onFinishOnboarding(false)}
-                className="w-full text-base"
-              >
-                {submitting ? (
-                  <>
-                    <LoaderCircle className="anim-spin" aria-hidden="true" /> Menyimpan…
-                  </>
-                ) : (
-                  'Mulai belajar'
-                )}
-              </Button>
-
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => void onFinishOnboarding(true)}
-                className="mx-auto rounded-lg px-2 py-1 text-sm font-semibold text-muted underline-offset-4 hover:text-ink hover:underline"
-              >
-                Lewati kode kelas
-              </button>
-            </div>
-          )}
-
-          <div className="mt-auto flex flex-col gap-3 pt-8">
-            {netError && (
-              <Alert tone="error" icon={<Wifi />} role="alert">
-                Tidak bisa menghubungi server. Cek internet, lalu coba lagi.
-              </Alert>
-            )}
-
-            {mode === 'login' && hintAccounts.length > 0 && !compact && !netError && (
-              <div className="rounded-2xl border-[1.5px] border-dashed border-[#d9d1c5] px-4 py-3.5">
-                <p className="text-xs font-bold uppercase tracking-[0.1em] text-muted">Akun siap pakai</p>
-                <ul className="mt-2 flex flex-col gap-2">
-                  {hintAccounts.map((c) => (
-                    <li key={c.email} className="flex items-center justify-between gap-3">
-                      <span className="truncate text-[0.9375rem] font-semibold text-ink">{c.email}</span>
-                      <Button
-                        variant="outline-tiger"
-                        size="sm"
-                        className="h-10 px-5 text-sm"
-                        onClick={() => {
-                          setEmail(c.email);
-                          setPassword(c.password);
-                          setMessage(null);
-                          setNetError(false);
-                          setFieldError({});
-                        }}
-                      >
-                        Pakai
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </motion.div>
->>>>>>> 04b54306b72be52ce85c7be5b88f8de3b18a0e40
       </section>
 
       <ForgotPasswordDialog
