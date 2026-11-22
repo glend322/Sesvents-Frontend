@@ -218,11 +218,26 @@ export function LoginPage() {
       return;
     }
     if (result.reason === 'email-exists') {
-      setFieldError({ email: 'Email ini sudah terdaftar. Coba masuk saja, ya.' });
+      const msgLower = (result.message ?? '').toLowerCase();
+      if (msgLower.includes('phone') || msgLower.includes('telepon') || msgLower.includes('nomor')) {
+        setFieldError({ phone: result.message || 'Nomor telepon ini sudah terdaftar.' });
+      } else {
+        setFieldError({ email: result.message || 'Email ini sudah terdaftar. Coba masuk saja, ya.' });
+      }
       return;
     }
     if (result.reason === 'validation-error') {
-      setMessage('Password terlalu lemah atau data belum valid. Coba kombinasikan huruf dan angka.');
+      const detail = result.message;
+      const detailLower = (detail ?? '').toLowerCase();
+      if (detailLower.includes('phone') || detailLower.includes('telepon')) {
+        setFieldError({ phone: detail || 'Nomor telepon belum sesuai format.' });
+      } else if (detailLower.includes('email')) {
+        setFieldError({ email: detail || 'Format email belum sesuai.' });
+      } else if (detailLower.includes('full_name') || detailLower.includes('name') || detailLower.includes('nama')) {
+        setFieldError({ fullName: detail || 'Nama lengkap belum sesuai.' });
+      } else {
+        setMessage(detail || 'Password terlalu lemah atau data belum valid. Coba kombinasikan huruf dan angka.');
+      }
       return;
     }
     setNetError(true);

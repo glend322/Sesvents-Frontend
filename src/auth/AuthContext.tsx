@@ -16,8 +16,8 @@ type Ctx = {
   endedReason: SessionEndedReason | null;
   clearEndedReason: () => void;
   login: (email: string, password: string) => Promise<LoginResult>;
-  register: (fullName: string, email: string, password: string, phone?: string) => Promise<LoginResult>;
-  updateProfile: (data: { grade?: number; classCode?: string | null; fullName?: string }) => Promise<boolean>;
+  register: (fullName: string, email: string, password: string, phone: string) => Promise<LoginResult>;
+  updateProfile: (data: { grade?: number; classCode?: string | null; fullName?: string; phone?: string }) => Promise<boolean>;
   /** reason 'expired' dipakai saat BE menolak token (401). false = data sesi gagal dihapus. */
   logout: (reason?: SessionEndedReason) => boolean;
 };
