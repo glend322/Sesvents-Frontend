@@ -3,12 +3,12 @@ import { AUTH } from './auth.config';
 import type { LoginResult, SiswaProfile } from './types';
 
 /**
- * Auth service siswa (ADR-056): login & daftar mandiri memakai Email + Password lewat Backend.
+ * Auth service siswa (ADR-056): login & daftar mandiri memakai Email + Nomor Telepon + Password lewat Backend.
  */
 export interface AuthService {
   login(email: string, password: string): Promise<LoginResult>;
-  register(fullName: string, email: string, password: string, phone?: string): Promise<LoginResult>;
-  completeProfile(accessToken: string, data: { grade?: number; classCode?: string | null; fullName?: string }): Promise<SiswaProfile | null>;
+  register(fullName: string, email: string, password: string, phone: string): Promise<LoginResult>;
+  completeProfile(accessToken: string, data: { grade?: number; classCode?: string | null; fullName?: string; phone?: string }): Promise<SiswaProfile | null>;
   forgotPassword(email: string): Promise<boolean>;
   logout(accessToken?: string): Promise<void>;
   refresh(refreshToken: string): Promise<LoginResult | { ok: false; reason: 'invalid' }>;
@@ -27,7 +27,6 @@ type ApiStudent = {
   id: string;
   email?: string | null;
   phone?: string | null;
-  phone_number?: string | null;
   nis?: string | null;
   full_name: string;
   class_name?: string | null;
@@ -41,7 +40,7 @@ type ApiLoginResponse = { access_token: string; token_type: 'bearer'; expires_in
 export const toProfile = (s: ApiStudent): SiswaProfile => ({
   id: s.id,
   email: s.email?.trim() || s.nis?.trim() || '',
-  phone: s.phone?.trim() || s.phone_number?.trim() || undefined,
+  phone: s.phone?.trim() || undefined,
   nis: s.nis ?? undefined,
   name: s.full_name,
   className: s.class_name ?? undefined,
@@ -50,6 +49,35 @@ export const toProfile = (s: ApiStudent): SiswaProfile => ({
   school: s.institution?.name ?? undefined,
   photoUrl: s.avatar_url ?? undefined,
 });
+
+async function extractErrorMessage(res: Response): Promise<string | undefined> {
+  try {
+    const body = (await res.json()) as {
+      detail?: string | { loc?: (string | number)[]; msg?: string }[];
+      error?: { code?: string; message?: string };
+      message?: string;
+    };
+    if (typeof body.error?.message === 'string' && body.error.message.trim()) {
+      return body.error.message.trim();
+    }
+    if (typeof body.detail === 'string' && body.detail.trim()) {
+      return body.detail.trim();
+    }
+    if (Array.isArray(body.detail) && body.detail.length > 0) {
+      const first = body.detail[0];
+      const field = first?.loc?.[first.loc.length - 1];
+      const msg = first?.msg?.trim();
+      if (field && msg) return `${String(field)}: ${msg}`;
+      if (msg) return msg;
+    }
+    if (typeof body.message === 'string' && body.message.trim()) {
+      return body.message.trim();
+    }
+  } catch {
+    // ignore JSON parse failure
+  }
+  return undefined;
+}
 
 async function postAuth(path: string, body: unknown): Promise<LoginResult> {
   const ctrl = new AbortController();
@@ -61,10 +89,18 @@ async function postAuth(path: string, body: unknown): Promise<LoginResult> {
       body: JSON.stringify(body),
       signal: ctrl.signal,
     });
-    if (res.status === 401) return { ok: false, reason: 'invalid-credentials' };
-    if (res.status === 409) return { ok: false, reason: 'email-exists' };
-    if (res.status === 422) return { ok: false, reason: 'validation-error' };
-    if (!res.ok) return { ok: false, reason: 'service-error' };
+    if (res.status === 401) {
+      return { ok: false, reason: 'invalid-credentials', message: await extractErrorMessage(res) };
+    }
+    if (res.status === 409) {
+      return { ok: false, reason: 'email-exists', message: await extractErrorMessage(res) };
+    }
+    if (res.status === 422 || res.status === 400) {
+      return { ok: false, reason: 'validation-error', message: await extractErrorMessage(res) };
+    }
+    if (!res.ok) {
+      return { ok: false, reason: 'service-error', message: await extractErrorMessage(res) };
+    }
     const data = (await res.json()) as ApiLoginResponse;
     return {
       ok: true,
@@ -85,11 +121,12 @@ export const httpAuthService: AuthService = {
       full_name: fullName,
       email,
       password,
-      ...(phone ? { phone, phone_number: phone } : {}),
+      phone,
     }),
   async completeProfile(accessToken, data) {
     const payload: Record<string, unknown> = {};
     if (data.fullName !== undefined) payload.full_name = data.fullName;
+    if (data.phone !== undefined) payload.phone = data.phone;
     if (data.grade !== undefined) payload.grade = data.grade;
     if (data.classCode !== undefined) payload.class_code = data.classCode;
     try {

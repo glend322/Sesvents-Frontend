@@ -90,15 +90,20 @@ const fromApi = (r: ApiMatchResponse): MatchResult => ({
 
 export const httpMatchingService: MatchingService = {
   async matchSign(sequence, durationMs) {
-    const r = await post<ApiMatchResponse>('/api/match/sign', {
-      device_id: APP.deviceId,
-      sequence: toSignSequence(sequence),
-      duration_ms: Math.max(500, Math.round(durationMs)),
-    });
-    const result = fromApi(r);
-    // Catat lokal untuk panel simulator (?dev=1). Log asli sudah ditulis BE oleh endpoint match.
-    logsService.add({ direction: 'sign_to_text', predictedPhraseId: result.phraseId, confidence: result.confidence, resultedAction: result.action, source: 'match' });
-    return result;
+    try {
+      const r = await post<ApiMatchResponse>('/api/match/sign', {
+        device_id: APP.deviceId,
+        sequence: toSignSequence(sequence),
+        duration_ms: Math.max(500, Math.round(durationMs)),
+      });
+      const result = fromApi(r);
+      // Catat lokal untuk panel simulator (?dev=1). Log asli sudah ditulis BE oleh endpoint match.
+      logsService.add({ direction: 'sign_to_text', predictedPhraseId: result.phraseId, confidence: result.confidence, resultedAction: result.action, source: 'match' });
+      return result;
+    } catch {
+      // Fallback offline bila backend tidak aktif
+      return mockMatchingService.matchSign(sequence, durationMs);
+    }
   },
   async matchText(utterance) {
     // /api/match/text masih diblokir (ADR-047 D10). Sementara tokenizer lokal (ADR-050), tanpa delay.
