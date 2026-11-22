@@ -16,7 +16,7 @@ function parse(raw: string | null): SiswaSession | null {
     const s = JSON.parse(raw) as Partial<SiswaSession>;
     if (!s || typeof s !== 'object') return null;
     const p = s.profile;
-    if (!s.sessionId || !p || typeof p.nis !== 'string' || typeof p.id !== 'string') return null;
+    if (!s.sessionId || !p || typeof p.id !== 'string') return null;
     if (typeof s.lastActiveAt !== 'number' || typeof s.loginAt !== 'number') return null;
     return s as SiswaSession;
   } catch {

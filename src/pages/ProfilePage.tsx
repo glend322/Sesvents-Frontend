@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Captions, CheckCircle2, FileText, GraduationCap, Hand, IdCard, LogOut, MessageCircleQuestion, PlayCircle, RotateCcw, School, TriangleAlert, Type, Volume2 } from 'lucide-react';
+import { Captions, CheckCircle2, FileText, GraduationCap, Hand, LogOut, Mail, MessageCircleQuestion, PlayCircle, RotateCcw, School, TriangleAlert, Type, Volume2 } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import { Avatar } from '@/auth/components/Avatar';
 import { Button } from '@/components/ui/button';
@@ -50,12 +50,18 @@ export default function ProfilePage() {
         </div>
         <hr className="relative my-5 border-line" />
         <dl className="relative flex flex-col gap-4">
-          <InfoRow icon={<IdCard className="size-[1.1rem]" />} label="NIS" value={profile.nis?.trim() || BELUM_ADA} />
+          <InfoRow icon={<Mail className="size-[1.1rem]" />} label="Email" value={profile.email?.trim() || BELUM_ADA} />
           <InfoRow icon={<School className="size-[1.1rem]" />} label="Sekolah" value={profile.school?.trim() || BELUM_ADA} />
           <InfoRow
             icon={<GraduationCap className="size-[1.1rem]" />}
             label="Kelas"
-            value={profile.className ? `${profile.className}${profile.grade ? ` · Kelas ${profile.grade}` : ''}` : BELUM_ADA}
+            value={
+              profile.className
+                ? `${profile.className}${profile.grade ? ` · Kelas ${profile.grade}` : ''}`
+                : profile.grade
+                  ? `SD Kelas ${profile.grade}`
+                  : BELUM_ADA
+            }
           />
         </dl>
         <p className="relative mt-4 text-xs text-muted">Data profil diatur oleh sekolah. Hubungi wali kelas bila ada yang salah.</p>

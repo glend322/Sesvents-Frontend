@@ -15,7 +15,9 @@ type Ctx = {
   loading: boolean;
   endedReason: SessionEndedReason | null;
   clearEndedReason: () => void;
-  login: (nis: string, password: string) => Promise<LoginResult>;
+  login: (email: string, password: string) => Promise<LoginResult>;
+  register: (fullName: string, email: string, password: string) => Promise<LoginResult>;
+  updateProfile: (data: { grade?: number; classCode?: string | null; fullName?: string }) => Promise<boolean>;
   /** reason 'expired' dipakai saat BE menolak token (401). false = data sesi gagal dihapus. */
   logout: (reason?: SessionEndedReason) => boolean;
 };
@@ -98,8 +100,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(id);
   }, [session]);
 
-  const login = useCallback<Ctx['login']>(async (nis, password) => {
-    const result = await authService.login(nis, password);
+  const login = useCallback<Ctx['login']>(async (email, password) => {
+    const result = await authService.login(email, password);
     if (result.ok) {
       setEndedReason(null);
       setSession(sessionStore.create(result.profile, result.tokens));
@@ -107,7 +109,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result;
   }, []);
 
+  const register = useCallback<Ctx['register']>(async (fullName, email, password) => {
+    const result = await authService.register(fullName, email, password);
+    if (result.ok) {
+      setEndedReason(null);
+      setSession(sessionStore.create(result.profile, result.tokens));
+    }
+    return result;
+  }, []);
+
+  const updateProfile = useCallback<Ctx['updateProfile']>(async (data) => {
+    const current = sessionRef.current;
+    if (!current?.accessToken) return false;
+    const updated = await authService.completeProfile(current.accessToken, data);
+    if (!updated) return false;
+    const next = { ...current, profile: updated, lastActiveAt: Date.now() };
+    sessionStore.write(next);
+    setSession(next);
+    return true;
+  }, []);
+
   const logout = useCallback<Ctx['logout']>((reason = 'logout') => {
+    const currentToken = sessionRef.current?.accessToken;
+    if (reason === 'logout' && currentToken) {
+      void authService.logout(currentToken);
+    }
     const cleared = sessionStore.clear();
     if (cleared) {
       setEndedReason(reason);
@@ -127,9 +153,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       endedReason,
       clearEndedReason,
       login,
+      register,
+      updateProfile,
       logout,
     }),
-    [session, loading, endedReason, clearEndedReason, login, logout],
+    [session, loading, endedReason, clearEndedReason, login, register, updateProfile, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,23 +1,22 @@
-import { useEffect, useRef, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, KeyRound } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, KeyRound, LoaderCircle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { AUTH } from '../auth.config';
+import { authService, isValidEmail } from '../auth.service';
+import { Field } from '../components/Field';
 
-/**
- * Dialog "Lupa password?". Akun siswa dibuatkan sekolah, jadi tidak ada pemulihan
- * mandiri; dialog hanya mengarahkan ke wali kelas / operator sekolah.
- *
- * Aksesibilitas: role dialog + aria-modal, fokus awal masuk ke dalam dialog, fokus
- * terkunci (Tab berputar di dalam), Escape dan klik backdrop menutup, dan fokus
- * dikembalikan ke pemicu oleh pemanggil.
- */
 export function ForgotPasswordDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    setError(null);
+    setSent(false);
     closeRef.current?.focus();
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -29,10 +28,11 @@ export function ForgotPasswordDialog({ open, onClose }: { open: boolean; onClose
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  // Focus trap: Tab dari elemen terakhir kembali ke pertama, dan sebaliknya.
   const onKeyDownTrap = (e: KeyboardEvent) => {
     if (e.key !== 'Tab') return;
-    const focusables = panelRef.current?.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    const focusables = panelRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
     if (!focusables || focusables.length === 0) return;
     const first = focusables[0];
     const last = focusables[focusables.length - 1];
@@ -43,6 +43,21 @@ export function ForgotPasswordDialog({ open, onClose }: { open: boolean; onClose
       e.preventDefault();
       first.focus();
     }
+  };
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const cleaned = email.trim();
+    if (!isValidEmail(cleaned)) {
+      setError('Masukkan alamat email yang valid, ya.');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    const ok = await authService.forgotPassword(cleaned);
+    setSubmitting(false);
+    if (ok) setSent(true);
+    else setError('Gagal menghubungi server. Coba lagi sebentar lagi.');
   };
 
   return (
@@ -72,26 +87,60 @@ export function ForgotPasswordDialog({ open, onClose }: { open: boolean; onClose
             className="w-full max-w-[32rem] rounded-[1.75rem] bg-white p-6 shadow-soft md:p-7"
           >
             <span className="grid size-12 place-items-center rounded-2xl bg-brand-50 text-brand-600">
-              <KeyRound className="size-5" aria-hidden="true" />
+              {sent ? <CheckCircle2 className="size-5" aria-hidden="true" /> : <KeyRound className="size-5" aria-hidden="true" />}
             </span>
 
             <h2 id="forgot-title" className="mt-4 text-[1.375rem] font-extrabold leading-tight tracking-[-0.03em]">
-              Password diatur oleh sekolah
+              {sent ? 'Cek kotak masuk emailmu' : 'Lupa password?'}
             </h2>
 
-            <div id="forgot-body" className="mt-2 flex flex-col gap-3 text-sm leading-relaxed text-muted">
-              <p>Akun siswa dibuat dan dikelola oleh sekolah, jadi password tidak bisa diatur ulang sendiri dari halaman ini.</p>
-              <p className="rounded-2xl bg-tint p-3.5 text-brand-800">
-                Minta password baru ke <span className="font-bold">{AUTH.adminContact}</span>. Sebutkan NIS kamu supaya akunmu cepat
-                ditemukan.
-              </p>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <Button ref={closeRef} variant="primary" size="md" onClick={onClose}>
-                <ArrowLeft aria-hidden="true" /> Kembali
-              </Button>
-            </div>
+            {sent ? (
+              <div id="forgot-body" className="mt-2 flex flex-col gap-3 text-sm leading-relaxed text-muted">
+                <p>
+                  Jika email <span className="font-semibold text-ink">{email.trim()}</span> terdaftar di LUNAR, kami sudah mengirimkan
+                  tautan untuk mengatur ulang password.
+                </p>
+                <div className="mt-4 flex justify-end">
+                  <Button ref={closeRef} variant="primary" size="md" onClick={onClose}>
+                    <ArrowLeft aria-hidden="true" /> Kembali ke halaman masuk
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <form id="forgot-body" onSubmit={onSubmit} noValidate className="mt-3 flex flex-col gap-4">
+                <p className="text-sm leading-relaxed text-muted">
+                  Masukkan email akun LUNAR-mu. Kami akan mengirimkan tautan untuk membuat password baru.
+                </p>
+                <Field
+                  label="Email"
+                  icon={<Mail className="size-5" strokeWidth={1.8} />}
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder="nadia.putri@gmail.com"
+                  autoComplete="email"
+                  inputMode="email"
+                  spellCheck={false}
+                  error={error}
+                />
+                <div className="mt-2 flex items-center justify-end gap-3">
+                  <Button ref={closeRef} type="button" variant="outline" size="md" onClick={onClose}>
+                    Batal
+                  </Button>
+                  <Button type="submit" variant="primary" size="md" disabled={submitting}>
+                    {submitting ? (
+                      <>
+                        <LoaderCircle className="anim-spin" aria-hidden="true" /> Mengirim…
+                      </>
+                    ) : (
+                      'Kirim tautan'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            )}
           </motion.div>
         </motion.div>
       )}
