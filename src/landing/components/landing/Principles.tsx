@@ -7,22 +7,22 @@ const ITEMS: { icon: IconName; title: string; desc: string }[] = [
   {
     icon: 'target',
     title: 'Bukan penerjemah umum',
-    desc: 'Pengenalan isyarat fokus pada kosakata BISINDO yang sudah dilatih. Untuk kalimat lain, siswa tetap bisa mengetik.',
+    desc: 'Pengenalan isyarat fokus pada kosakata BISINDO yang sudah dilatih. Untuk kalimat lain, pengguna tetap bisa mengetik.',
   },
   {
     icon: 'eyeOff',
     title: 'Kamera tidak direkam',
-    desc: 'Titik gerak tangan hanya diproses di memori sementara lalu dibuang. Yang disimpan hanya teks riwayat chat siswa.',
+    desc: 'Titik gerak tangan hanya diproses di memori sementara lalu dibuang. Yang disimpan hanya teks riwayat chat pengguna.',
   },
   {
     icon: 'sparkles',
-    title: 'AI membantu, guru tetap utama',
-    desc: 'Jawaban chatbot bisa saja keliru. Gunakan sebagai teman belajar, dan cek kembali bersama guru bila ragu.',
+    title: 'AI membantu, tetap cek ulang saat ragu',
+    desc: 'Jawaban chatbot dihasilkan oleh AI dan bisa saja keliru. Periksa kembali ke materi asli bila ada hal yang meragukan.',
   },
   {
     icon: 'keyboard',
     title: 'Tetap jalan saat gangguan',
-    desc: 'Kamera, mic, atau koneksi bermasalah? Sisi yang gagal beralih ke mode ketik manual.',
+    desc: 'Kamera atau koneksi bermasalah? Sisi yang gagal beralih ke mode ketik manual.',
   },
 ];
 

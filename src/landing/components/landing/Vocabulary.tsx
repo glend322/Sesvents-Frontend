@@ -4,10 +4,9 @@ import { EASE } from '../../animations/tokens';
 
 // Contoh kosakata BISINDO yang dilatih pada model, dikelompokkan untuk konteks belajar.
 const GROUPS = [
-  { code: 'A', name: 'Sapaan', words: ['Halo', 'Apa kabar', 'Selamat pagi', 'Selamat siang', 'Terima kasih'] },
+  { code: 'A', name: 'Sapaan', words: ['Halo', 'Apa kabar', 'Selamat pagi', 'Selamat siang', 'Terima kasih', 'Saya', 'Kamu'] },
   { code: 'B', name: 'Pertanyaan', words: ['Apa', 'Bagaimana', 'Berapa', 'Kapan', 'Cari'] },
-  { code: 'C', name: 'Di kelas', words: ['Belajar', 'Teman', 'Ingat', 'Hari', 'Saya', 'Kamu'] },
-  { code: 'D', name: 'Perasaan & sehari-hari', words: ['Bingung', 'Baik', 'Rumah', 'Air', 'Tidur'] },
+  { code: 'C', name: 'Perasaan & sehari-hari', words: ['Bingung', 'Baik', 'Belajar', 'Ingat', 'Teman', 'Hari', 'Rumah', 'Air', 'Tidur'] },
 ];
 
 export function Vocabulary() {
@@ -45,8 +44,8 @@ export function Vocabulary() {
           </p>
         </div>
 
-        {/* Empat kelompok: 2 kolom di layar sedang, 4 kolom sejajar di layar lebar. */}
-        <div className="mt-10 grid gap-3 sm:grid-cols-2 md:mt-14 lg:grid-cols-4">
+        {/* Tiga kelompok sejajar pada layar sedang ke atas. */}
+        <div className="mt-10 grid gap-3 md:mt-14 md:grid-cols-3 md:gap-4">
           {GROUPS.map((g) => (
             <div key={g.code} className="js-group rounded-3xl border border-white/10 bg-white/[0.04] p-5">
               <div className="flex items-center justify-between">

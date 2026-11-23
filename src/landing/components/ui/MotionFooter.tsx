@@ -15,7 +15,7 @@ const MARQUEE = [
   'Caption di setiap video',
   'Tanya di menit yang bikin bingung',
   'Materi PDF jadi ramah Tuli',
-  'Privasi siswa terjaga',
+  'Privasi pengguna terjaga',
 ];
 
 type MagneticProps = ButtonHTMLAttributes<HTMLButtonElement> & AnchorHTMLAttributes<HTMLAnchorElement> & { as?: ElementType; children: ReactNode };
@@ -123,17 +123,17 @@ export function MotionFooter() {
           <div className="js-mf-reveal mt-9 flex w-full flex-col items-center gap-4">
             <div className="flex flex-wrap justify-center gap-3">
               <Magnetic as="a" href={loginHref} className="inline-flex items-center gap-2 rounded-full bg-brand-900 px-8 py-4 text-[15px] font-bold text-white shadow-[0_18px_40px_-14px_rgba(38,33,92,0.55)] hover:bg-brand-800">
-                Masuk sebagai siswa <span aria-hidden="true">→</span>
+                Mulai belajar sekarang <span aria-hidden="true">→</span>
               </Magnetic>
-              <Magnetic as="a" href="#sekolah" className={`${PILL} px-8 py-4 text-[15px] font-bold text-brand-900`}>
-                Untuk sekolah
+              <Magnetic as="a" href="#untuk-semua" className={`${PILL} px-8 py-4 text-[15px] font-bold text-brand-900`}>
+                Terbuka untuk umum
               </Magnetic>
             </div>
             <div className="flex flex-wrap justify-center gap-2.5">
               {[
                 ['Fitur', '#fitur'],
                 ['Cara kerja', '#cara-kerja'],
-                ['Untuk sekolah', '#sekolah'],
+                ['Kosakata', '#kosakata'],
               ].map(([label, href]) => (
                 <Magnetic key={href} as="a" href={href} className={`${PILL} px-5 py-2.5 text-[13px] font-semibold text-muted hover:text-brand-900`}>
                   {label}
@@ -144,20 +144,20 @@ export function MotionFooter() {
         </div>
 
         {/* bar bawah */}
-        <div className="relative z-20 flex w-full flex-col items-center justify-between gap-5 px-6 pb-7 md:flex-row md:px-12">
-          <div className="order-2 flex items-center gap-3 md:order-1">
+        <div className="relative z-20 flex w-full flex-col items-center gap-5 px-6 pb-7 md:grid md:grid-cols-[1fr_auto_1fr] md:items-center md:px-12">
+          <div className="order-2 flex items-center gap-3 md:order-1 md:justify-self-start">
             <Logo size="sm" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">© 2026 · Hackathon JOINTS</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">© 2026 · SEVENT X</span>
           </div>
-          <p className={`${PILL} order-1 cursor-default px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted md:order-2`}>
-            Dibuat dengan <span className="mf-heart text-rec" aria-label="cinta">❤</span> untuk siswa Tuli Indonesia
+          <p className={`${PILL} order-1 cursor-default px-5 py-2.5 text-center text-[11px] font-bold uppercase tracking-[0.14em] text-muted md:order-2 md:justify-self-center`}>
+            Dibuat dengan <span className="mf-heart text-rec" aria-label="cinta">❤</span> untuk penyandang Tuli Indonesia
           </p>
           <Magnetic
             as="button"
             type="button"
             onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia(MOTION_OK).matches ? 'smooth' : 'auto' })}
             aria-label="Kembali ke atas"
-            className={`${PILL} group order-3 size-12 justify-center text-muted hover:text-brand-900`}
+            className={`${PILL} group order-3 size-12 justify-center text-muted hover:text-brand-900 md:justify-self-end`}
           >
             <svg className="size-5 transition-transform duration-300 group-hover:-translate-y-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
