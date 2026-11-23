@@ -28,8 +28,8 @@ const STEPS: Step[] = [
   },
   {
     title: 'Tersampaikan',
-    desc: 'Hasil tampil sebagai teks, lalu dibacakan untuk guru atau dikirim ke chatbot.',
-    glyph: <Icon name="volume" className="size-5 text-ok-ink" />,
+    desc: 'Hasil tampil sebagai teks lalu dikirim ke chatbot.',
+    glyph: <Icon name="send" className="size-5 text-brand-600" />,
   },
 ];
 

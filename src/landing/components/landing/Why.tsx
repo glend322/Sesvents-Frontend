@@ -9,18 +9,18 @@ import { Icon, type IconName } from '../ui/Icon';
 const POINTS: { icon: IconName; title: string; desc: string }[] = [
   {
     icon: 'hand',
-    title: 'Materi dalam bahasa yang paling dipahami',
-    desc: 'Banyak bahan belajar hanya tersedia sebagai teks atau suara. LUNAR menghadirkan video pelajaran dengan bahasa isyarat BISINDO, ditemani teks dan audio.',
+    title: 'Konten dalam bahasa yang paling dipahami',
+    desc: 'Banyak bahan belajar hanya tersedia sebagai teks dan suara. LUNAR menghadirkan video pelajaran dengan bahasa isyarat BISINDO ditemani dengan teks (caption) interaktif.',
   },
   {
     icon: 'message',
     title: 'Bertanya tanpa ragu',
-    desc: 'Kalau ada yang belum jelas, siswa bisa langsung bertanya ke chatbot dengan mengetik atau berisyarat, kapan saja.',
+    desc: 'Kalau ada yang belum jelas, pengguna bisa langsung bertanya ke chatbot dengan mengetik atau berisyarat, kapan saja.',
   },
   {
     icon: 'users',
     title: 'Tanya tepat di bagian yang bikin bingung',
-    desc: 'Saat menonton video, siswa bisa langsung bertanya pada menit tertentu. LUNAR menjawab berdasarkan isi bagian itu.',
+    desc: 'Saat menonton video, pengguna bisa langsung bertanya pada menit tertentu. LUNAR menjawab berdasarkan isi bagian itu.',
   },
 ];
 export function Why() {
@@ -44,7 +44,7 @@ export function Why() {
       <div className="wrap">
         <p className="js-why-eyebrow text-[10.5px] font-extrabold uppercase tracking-[0.16em] text-brand-600">Kenapa ini penting</p>
         <h2 className="js-why-title mt-3 max-w-[860px] text-[clamp(34px,6.4vw,62px)] font-extrabold leading-[1] tracking-[-0.055em]">
-          Setiap siswa berhak belajar dengan cara yang <span className="text-brand-600">paling ia pahami.</span>
+          Semua orang berhak belajar dengan cara yang <span className="text-brand-600">paling mereka pahami.</span>
         </h2>
         <ul className="mt-10 grid gap-3 md:mt-14 md:grid-cols-3 md:gap-4">
           {POINTS.map((p) => (
