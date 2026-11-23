@@ -14,12 +14,11 @@ export type Settings = {
   textScale: 0 | 1 | 2;
   signSpeed: 0.75 | 1 | 1.25;
   autoPlaySign: boolean;
-  autoSpeak: boolean;
   captions: boolean;
   captionSize: CaptionSize;
 };
 
-const DEFAULTS: Settings = { textScale: 0, signSpeed: 1, autoPlaySign: true, autoSpeak: false, captions: true, captionSize: 'M' };
+const DEFAULTS: Settings = { textScale: 0, signSpeed: 1, autoPlaySign: true, captions: true, captionSize: 'M' };
 const KEY = 'lunar.settings';
 
 function load(): Settings {
@@ -29,7 +28,6 @@ function load(): Settings {
       textScale: [0, 1, 2].includes(raw.textScale as number) ? (raw.textScale as Settings['textScale']) : DEFAULTS.textScale,
       signSpeed: [0.75, 1, 1.25].includes(raw.signSpeed as number) ? (raw.signSpeed as Settings['signSpeed']) : DEFAULTS.signSpeed,
       autoPlaySign: typeof raw.autoPlaySign === 'boolean' ? raw.autoPlaySign : DEFAULTS.autoPlaySign,
-      autoSpeak: typeof raw.autoSpeak === 'boolean' ? raw.autoSpeak : DEFAULTS.autoSpeak,
       captions: typeof raw.captions === 'boolean' ? raw.captions : DEFAULTS.captions,
       captionSize: ['S', 'M', 'L'].includes(raw.captionSize as string) ? (raw.captionSize as CaptionSize) : DEFAULTS.captionSize,
     };

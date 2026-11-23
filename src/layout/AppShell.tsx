@@ -273,7 +273,7 @@ export function AppShell() {
           <Avatar name={profile?.name?.split(' ')[0]} photoUrl={profile?.photoUrl} className="size-10" textClassName="text-sm" />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-extrabold text-brand-900">{profile?.name}</span>
-            <span className="block truncate text-xs text-muted">{profile?.className ? `Siswa Kelas ${profile.className}` : 'Siswa'}</span>
+            <span className="block truncate text-xs text-muted">Pengguna</span>
           </span>
           <Settings className="size-4 shrink-0 text-muted" aria-hidden="true" />
         </NavLink>

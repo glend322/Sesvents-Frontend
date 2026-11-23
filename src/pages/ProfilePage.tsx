@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Captions, CheckCircle2, FileText, GraduationCap, Hand, LogOut, Mail, MessageCircleQuestion, PlayCircle, RotateCcw, School, TriangleAlert, Type, Volume2 } from 'lucide-react';
+import { Captions, CheckCircle2, FileText, Hand, LogOut, Mail, MessageCircleQuestion, Phone, PlayCircle, RotateCcw, TriangleAlert, Type, User } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import { Avatar } from '@/auth/components/Avatar';
 import { Button } from '@/components/ui/button';
@@ -45,26 +45,15 @@ export default function ProfilePage() {
         <div className="relative flex flex-col items-center text-center">
           <Avatar name={first} photoUrl={profile.photoUrl} className="size-28 ring-4 ring-white shadow-soft" textClassName="text-[2.5rem]" />
           <h1 className="mt-4 text-xl font-extrabold tracking-[-0.03em] text-brand-950">{profile.name}</h1>
-          <p className="mt-0.5 text-sm font-semibold text-brand-800">{profile.className ? `Siswa Kelas ${profile.className}` : 'Siswa'}</p>
-          <span className="mt-2.5 rounded-full bg-white px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-brand-600 shadow-soft">Siswa</span>
+          <p className="mt-0.5 text-sm font-semibold text-brand-800">Pengguna</p>
+          <span className="mt-2.5 rounded-full bg-white px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-brand-600 shadow-soft">Pengguna</span>
         </div>
         <hr className="relative my-5 border-line" />
         <dl className="relative flex flex-col gap-4">
           <InfoRow icon={<Mail className="size-[1.1rem]" />} label="Email" value={profile.email?.trim() || BELUM_ADA} />
-          <InfoRow icon={<School className="size-[1.1rem]" />} label="Sekolah" value={profile.school?.trim() || BELUM_ADA} />
-          <InfoRow
-            icon={<GraduationCap className="size-[1.1rem]" />}
-            label="Kelas"
-            value={
-              profile.className
-                ? `${profile.className}${profile.grade ? ` · Kelas ${profile.grade}` : ''}`
-                : profile.grade
-                  ? `SD Kelas ${profile.grade}`
-                  : BELUM_ADA
-            }
-          />
+          <InfoRow icon={<Phone className="size-[1.1rem]" />} label="No. Telp" value={profile.phone?.trim() || BELUM_ADA} />
+          <InfoRow icon={<User className="size-[1.1rem]" />} label="Nama Lengkap" value={profile.name?.trim() || BELUM_ADA} />
         </dl>
-        <p className="relative mt-4 text-xs text-muted">Data profil diatur oleh sekolah. Hubungi wali kelas bila ada yang salah.</p>
         <div className="relative mt-5 border-t border-line pt-5">
           <Button variant="outline" size="md" onClick={onLogout} className="w-full">
             <LogOut aria-hidden="true" /> Keluar
@@ -216,7 +205,7 @@ function SettingsCards() {
         />
       </Card>
 
-      <Card title="Isyarat & suara" icon={<Hand className="size-4" />}>
+      <Card title="Isyarat" icon={<Hand className="size-4" />}>
         <Choice
           label="Kecepatan animasi isyarat"
           value={s.signSpeed}
@@ -228,13 +217,6 @@ function SettingsCards() {
           onChange={(signSpeed) => s.update({ signSpeed })}
         />
         <Toggle label="Putar isyarat otomatis" desc="Jawaban baru langsung diperagakan." checked={s.autoPlaySign} onChange={(autoPlaySign) => s.update({ autoPlaySign })} />
-        <Toggle
-          icon={<Volume2 className="size-4" />}
-          label="Bacakan jawaban otomatis"
-          desc="Untuk teman atau guru yang mendengar. Tetap bisa dibacakan lewat tombol Dengarkan."
-          checked={s.autoSpeak}
-          onChange={(autoSpeak) => s.update({ autoSpeak })}
-        />
         <Button variant="ghost" size="sm" className="w-fit" onClick={s.reset}>
           <RotateCcw /> Kembalikan ke awal
         </Button>
