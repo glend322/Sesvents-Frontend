@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CircleAlert, Clock, Hash, Info, LoaderCircle, Wifi } from 'lucide-react';
+import { CircleAlert, Clock, Info, LoaderCircle, Wifi } from 'lucide-react';
 import { TigerMascot, type MascotMood } from '@/components/mascot/TigerMascot';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
@@ -16,14 +16,13 @@ import { ForgotPasswordDialog } from './ForgotPasswordDialog';
 /**
  * Halaman Masuk & Buat Akun (Email + Password).
  * - Mode Masuk: Email, Password, Masuk, Belum punya akun? Daftar, Lupa password?.
- * - Mode Buat Akun: Nama lengkap, Email, Password (Minimal 8 huruf atau angka.),
+ * - Mode Buat Akun: Nama lengkap, Email, Nomor telepon, Password (Minimal 8 huruf atau angka.),
  *   kotak pengingat orang tua/guru, Daftar, Sudah punya akun? Masuk.
  * - Transisi antar mode Masuk & Buat Akun dibuat seragam dan stabil (posisi banner & maskot tidak melompat).
  */
-type AuthMode = 'login' | 'register' | 'onboarding';
+type AuthMode = 'login' | 'register';
 
 const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
-const GRADES = [4, 5, 6] as const;
 
 const FORM_TRANSITION = {
   initial: { opacity: 0, y: 10 },
@@ -33,7 +32,7 @@ const FORM_TRANSITION = {
 };
 
 export function LoginPage() {
-  const { login, register, updateProfile, profile, isAuthenticated, loading, endedReason, clearEndedReason } = useAuth();
+  const { login, register, isAuthenticated, loading, endedReason, clearEndedReason } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from;
@@ -43,8 +42,6 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [grade, setGrade] = useState<number>(5);
-  const [classCode, setClassCode] = useState('');
   /** Pesan salah email/password (kotak merah muda di atas form). */
   const [message, setMessage] = useState<ReactNode>(null);
   /** Server tak terjangkau (kotak terpisah di bawah). */
@@ -62,10 +59,10 @@ export function LoginPage() {
   const mascotMood: MascotMood = submitting ? 'thinking' : typingField ? 'typing' : 'idle';
 
   useEffect(() => {
-    if (isAuthenticated && mode !== 'onboarding') {
+    if (isAuthenticated) {
       navigate(from || '/chat', { replace: true });
     }
-  }, [isAuthenticated, mode, from, navigate]);
+  }, [isAuthenticated, from, navigate]);
 
   useEffect(() => {
     if (!lockUntil) return;
@@ -214,7 +211,7 @@ export function LoginPage() {
     setSubmitting(false);
 
     if (result.ok) {
-      setMode('onboarding');
+      navigate(from || '/chat', { replace: true });
       return;
     }
     if (result.reason === 'email-exists') {
@@ -243,19 +240,7 @@ export function LoginPage() {
     setNetError(true);
   };
 
-  const onFinishOnboarding = async (skipCode: boolean) => {
-    if (submitting) return;
-    setSubmitting(true);
-    setNetError(false);
-    await updateProfile({
-      grade,
-      classCode: skipCode ? null : classCode.trim() || null,
-    });
-    setSubmitting(false);
-    navigate(from || '/chat', { replace: true });
-  };
-
-  if (loading || (isAuthenticated && mode !== 'onboarding')) {
+  if (loading || isAuthenticated) {
     return (
       <div className="grid min-h-dvh place-items-center bg-sand" role="status" aria-live="polite">
         <span className="flex items-center gap-2 text-sm text-muted">
@@ -274,7 +259,6 @@ export function LoginPage() {
 
   const isRegister = mode === 'register';
   const compact = !!message || locked || !!notice;
-  const firstName = (profile?.name || fullName || 'Teman').trim().split(/\s+/)[0];
 
   return (
     <div className="flex min-h-dvh flex-col bg-white lg:grid lg:grid-cols-[1.06fr_1fr]">
@@ -315,19 +299,15 @@ export function LoginPage() {
               <h1 className="max-w-[16.5rem] text-[1.625rem] font-black uppercase leading-[1.08] tracking-[0.01em] text-ink sm:max-w-sm sm:text-[2rem] lg:max-w-md lg:text-[2.45rem] xl:text-[2.7rem]">
                 {isRegister
                   ? 'Buat akun, yuk'
-                  : mode === 'onboarding'
-                    ? `Sedikit lagi, ${firstName}!`
-                    : compact
-                      ? 'Masuk dulu, yuk'
-                      : 'Masuk untuk mulai belajar'}
+                  : compact
+                    ? 'Masuk dulu, yuk'
+                    : 'Masuk untuk mulai belajar'}
               </h1>
               {!compact && (
                 <p className="mt-2.5 max-w-[12.75rem] text-[0.9375rem] leading-snug text-ink sm:max-w-xs sm:text-base lg:mt-3 lg:max-w-md lg:text-[1.0625rem]">
                   {isRegister
                     ? 'Daftar dengan mudah untuk mulai belajar bersama LUNAR.'
-                    : mode === 'onboarding'
-                      ? 'Biar materinya pas buat kamu.'
-                      : 'Pakai email dan password akunmu.'}
+                    : 'Pakai email dan password akunmu.'}
                 </p>
               )}
             </motion.div>
@@ -522,73 +502,6 @@ export function LoginPage() {
                     </button>
                   </div>
                 </>
-              )}
-
-              {mode === 'onboarding' && (
-                /* ---------------- LANGKAH 2: ONBOARDING KELAS ---------------- */
-                <div className="flex flex-col gap-5">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-tiger-ink">Langkah 2 dari 2</p>
-                    <div className="mt-2 h-1.5 w-full rounded-full bg-tiger" />
-                  </div>
-
-                  <div>
-                    <p className="mb-2.5 text-[0.9375rem] font-semibold text-ink">Kamu kelas berapa?</p>
-                    <div className="grid grid-cols-3 gap-2.5">
-                      {GRADES.map((g) => (
-                        <button
-                          key={g}
-                          type="button"
-                          onClick={() => setGrade(g)}
-                          className={cn(
-                            'h-12 rounded-xl border-[1.5px] text-sm font-bold transition-colors',
-                            grade === g ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink hover:border-ink/40',
-                          )}
-                        >
-                          SD {g}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Field
-                    label="Kode kelas dari sekolah (opsional)"
-                    icon={<Hash className="size-5" strokeWidth={1.8} />}
-                    value={classCode}
-                    onChange={(e) => setClassCode(e.target.value)}
-                    placeholder="Contoh: LNR-5A21"
-                    spellCheck={false}
-                  />
-
-                  <p className="rounded-2xl bg-brand-50 px-4 py-3 text-xs leading-relaxed text-brand-800">
-                    Punya kode dari guru? Isi supaya gurumu bisa melihat progres belajarmu. Tidak punya? Lewati saja.
-                  </p>
-
-                  <Button
-                    type="button"
-                    size="lg"
-                    disabled={submitting}
-                    onClick={() => void onFinishOnboarding(false)}
-                    className="w-full text-base"
-                  >
-                    {submitting ? (
-                      <>
-                        <LoaderCircle className="anim-spin" aria-hidden="true" /> Menyimpan…
-                      </>
-                    ) : (
-                      'Mulai belajar'
-                    )}
-                  </Button>
-
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    onClick={() => void onFinishOnboarding(true)}
-                    className="mx-auto rounded-lg px-2 py-1 text-sm font-semibold text-muted underline-offset-4 hover:text-ink hover:underline"
-                  >
-                    Lewati kode kelas
-                  </button>
-                </div>
               )}
 
               {netError && (
