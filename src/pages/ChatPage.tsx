@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
 import { SignerAvatar } from '@/components/ui/signer-avatar';
 import { clock, MATERI, sectionStart } from '@/data/materi';
-import { Bubble, Composer, DocumentChips, ErrorNote, Typing } from '@/features/chatbot/ChatParts';
+import { Bubble, Composer, DocumentChips, ErrorNote, simplifyPrompt, Typing } from '@/features/chatbot/ChatParts';
 import { DeleteChatDialog } from '@/features/chatbot/DeleteChatDialog';
 import { QUICK_PROMPTS, type PromptTone } from '@/features/chatbot/prompts';
 import { useChat } from '@/features/chatbot/useChat';
@@ -96,6 +96,7 @@ export default function ChatPage() {
 
   const mood: MascotMood = chat.sending || chat.uploading ? 'thinking' : typing ? 'typing' : 'idle';
   const active = chat.sessions.find((s) => s.id === activeId);
+  const lastAssistantId = [...chat.messages].reverse().find((m) => m.role === 'assistant')?.id;
 
   const composer = (
     <>
@@ -202,8 +203,8 @@ export default function ChatPage() {
                   key={m.id}
                   m={m}
                   autoPlay={!!m.fresh && settings.autoPlaySign}
-                  speaking={tts.speaking}
-                  onSpeak={() => (tts.speaking ? tts.cancel() : void tts.speak(m.content))}
+                  busy={chat.sending}
+                  onSimplify={() => void send(simplifyPrompt(m.content, m.id === lastAssistantId), 'text')}
                   onRetry={() => void chat.retry(m)}
                   onDiscard={() => chat.discard(m.id)}
                 />
@@ -214,13 +215,7 @@ export default function ChatPage() {
         )}
       </div>
 
-      <div className="sticky bottom-0 z-10 border-t border-line bg-white px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 lg:rounded-t-2xl lg:border-x">
-        <p className="mb-2.5 text-center text-[0.8125rem] text-ink-2">
-          LUNAR bisa keliru, tanyakan juga ke gurumu.{' '}
-          <Link to="/riwayat" className="font-semibold text-tiger-ink hover:underline">
-            Riwayat
-          </Link>
-        </p>
+      <div className="sticky bottom-0 z-10 border-t border-line bg-white px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 lg:rounded-t-2xl lg:border-x">
         {composer}
       </div>
     </div>

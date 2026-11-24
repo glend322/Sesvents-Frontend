@@ -1,6 +1,6 @@
-import { Fragment, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowUp, Captions, CaptionsOff, FileText, Hand, LoaderCircle, MapPin, Play, Plus, RotateCcw, TriangleAlert, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowUp, Captions, CaptionsOff, Check, Copy, FileText, Hand, LoaderCircle, MapPin, Play, Plus, RotateCcw, Sparkles, TriangleAlert, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LogoMark } from '@/components/ui/logo';
 import { clock } from '@/data/materi';
@@ -66,13 +66,88 @@ export function AnswerText({ text, className }: { text: string; className?: stri
   );
 }
 
+// ---------------------------------------------------------------- salin & sederhanakan
+
+const copyCallbacks = new WeakMap<HTMLButtonElement, (ok: boolean) => void>();
+let copyListenerReady = false;
+let lastCopyAnnouncement = '';
+
+function legacyCopy(text: string): boolean {
+  const previousFocus = document.activeElement as HTMLElement | null;
+  const field = Object.assign(document.createElement('textarea'), { value: text });
+  field.setAttribute('readonly', '');
+  field.style.cssText = 'position:fixed;inset-block-start:0;opacity:0';
+  document.body.append(field);
+  field.select();
+  try {
+    return document.execCommand('copy');
+  } finally {
+    field.remove();
+    previousFocus?.focus({ preventScroll: true });
+  }
+}
+
+async function runCopyCommand(button: HTMLButtonElement, target: HTMLElement) {
+  const text = target.innerText.trim();
+  if (!text) return;
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    ok = true;
+  } catch {
+    try {
+      ok = legacyCopy(text);
+    } catch {
+      ok = false;
+    }
+  }
+  copyCallbacks.get(button)?.(ok);
+}
+
+function ensureCopyListener() {
+  if (copyListenerReady || typeof window === 'undefined') return;
+  copyListenerReady = true;
+  if ('CommandEvent' in window) {
+    document.addEventListener(
+      'command',
+      (e) => {
+        const ev = e as Event & { command?: string; source?: Element | null };
+        if (ev.command !== '--copy') return;
+        const button = ev.source;
+        const target = ev.target;
+        if (button instanceof HTMLButtonElement && target instanceof HTMLElement) {
+          void runCopyCommand(button, target);
+        }
+      },
+      true,
+    );
+  } else {
+    document.addEventListener('click', (event) => {
+      if (event.defaultPrevented) return;
+      const el = event.target instanceof Element ? event.target.closest('button[command="--copy"]') : null;
+      if (!(el instanceof HTMLButtonElement)) return;
+      const targetId = el.getAttribute('commandfor');
+      const target = targetId ? document.getElementById(targetId) : null;
+      if (target) void runCopyCommand(el, target);
+    });
+  }
+}
+
+/** Prompt tindak lanjut untuk tombol "Sederhanakan" agar jawaban lebih ringkas dan mudah dipahami. */
+export function simplifyPrompt(content: string, latest: boolean): string {
+  if (latest) return 'Tolong jelaskan lagi jawaban tadi dengan kalimat yang lebih sederhana dan contoh sehari-hari.';
+  const plain = content.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
+  const snippet = plain.length > 60 ? `${plain.slice(0, 60).trimEnd()}…` : plain;
+  return `Tolong jelaskan bagian “${snippet}” dengan kalimat yang lebih sederhana dan contoh sehari-hari.`;
+}
+
 // ---------------------------------------------------------------- pesan
 
 export function Bubble({
   m,
   autoPlay,
-  speaking,
-  onSpeak,
+  busy = false,
+  onSimplify,
   onRetry,
   onDiscard,
   onSeek,
@@ -81,8 +156,8 @@ export function Bubble({
 }: {
   m: ViewMessage;
   autoPlay: boolean;
-  speaking: boolean;
-  onSpeak: () => void;
+  busy?: boolean;
+  onSimplify?: () => void;
   onRetry: () => void;
   onDiscard: () => void;
   /** Halaman video: klik chip waktu di pertanyaan → lompat ke detik itu. */
@@ -93,6 +168,7 @@ export function Bubble({
   compact?: boolean;
 }) {
   const settings = useSettings();
+  const answerId = useId();
 
   if (m.role === 'user') {
     const t = m.videoTSec;
@@ -153,15 +229,18 @@ export function Bubble({
       <span className="mb-2 flex items-center gap-2 text-[0.9375rem] font-bold tracking-[0.02em] text-ink">
         <LogoMark className="size-7 rounded-lg" /> LUNAR
       </span>
-      <div className="rounded-[20px] border border-line bg-white px-5 py-4">
+      <div id={answerId} className="rounded-[20px] border border-line bg-white px-5 py-4">
         <AnswerText text={m.content} />
       </div>
-      <AnswerSign text={m.content} autoPlay={autoPlay} compact={compact} speech={{ speaking, onSpeak }} />
+      <AnswerSign text={m.content} autoPlay={autoPlay} compact={compact} />
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Chip onClick={onSpeak} pressed={speaking}>
-          {speaking ? <VolumeX aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
-          {speaking ? 'Hentikan' : 'Dengarkan'}
-        </Chip>
+        <CopyChip targetId={answerId} />
+        {onSimplify && (
+          <Chip onClick={onSimplify} disabled={busy}>
+            <Sparkles aria-hidden="true" />
+            Sederhanakan
+          </Chip>
+        )}
         <Chip onClick={() => settings.update({ captions: !settings.captions })} pressed={settings.captions} label={settings.captions ? 'Caption menyala' : 'Caption mati'}>
           {settings.captions ? <Captions aria-hidden="true" /> : <CaptionsOff aria-hidden="true" />}
           Caption
@@ -177,14 +256,84 @@ export function Bubble({
   );
 }
 
-function Chip({ children, onClick, pressed, label }: { children: ReactNode; onClick: () => void; pressed?: boolean; label?: string }) {
+function CopyChip({ targetId }: { targetId: string }) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const timerRef = useRef<number | null>(null);
+  const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [liveText, setLiveText] = useState('');
+
+  useEffect(() => {
+    ensureCopyListener();
+    const btn = btnRef.current;
+    if (!btn) return;
+    copyCallbacks.set(btn, (ok) => {
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+      setStatus(ok ? 'copied' : 'failed');
+      let msg = ok ? 'Jawaban disalin' : 'Gagal menyalin';
+      if (msg === lastCopyAnnouncement) msg += '\u00A0';
+      lastCopyAnnouncement = msg;
+      setLiveText('');
+      requestAnimationFrame(() => setLiveText(msg));
+      timerRef.current = window.setTimeout(() => {
+        setStatus('idle');
+        setLiveText('');
+        timerRef.current = null;
+      }, 2000);
+    });
+    return () => {
+      copyCallbacks.delete(btn);
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  return (
+    <span className="inline-flex items-center">
+      <button
+        ref={btnRef}
+        type="button"
+        {...({ command: '--copy', commandfor: targetId } as Record<string, string>)}
+        data-copied={status === 'copied' ? '' : undefined}
+        data-failed={status === 'failed' ? '' : undefined}
+        className={cn(
+          'flex min-h-11 min-w-11 items-center gap-2 rounded-xl border-[1.5px] bg-white px-4 py-2 text-[0.9375rem] font-semibold transition-colors [&_svg]:size-[1.15rem]',
+          status === 'copied'
+            ? 'border-ok-ink/30 bg-ok-soft text-ok-ink'
+            : status === 'failed'
+              ? 'border-rec/30 bg-rec-soft text-rec'
+              : 'border-line text-ink hover:bg-sand',
+        )}
+      >
+        {status === 'copied' ? <Check aria-hidden="true" /> : status === 'failed' ? <TriangleAlert aria-hidden="true" /> : <Copy aria-hidden="true" />}
+        {status === 'copied' ? 'Tersalin' : status === 'failed' ? 'Gagal salin' : 'Salin'}
+      </button>
+      <span role="status" className="sr-only">
+        {liveText}
+      </span>
+    </span>
+  );
+}
+
+function Chip({
+  children,
+  onClick,
+  pressed,
+  label,
+  disabled,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  pressed?: boolean;
+  label?: string;
+  disabled?: boolean;
+}) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
       aria-pressed={pressed}
       aria-label={label}
-      className="flex h-11 items-center gap-2 rounded-xl border-[1.5px] border-line bg-white px-4 text-[0.9375rem] font-semibold text-ink transition-colors hover:bg-sand [&_svg]:size-[1.15rem]"
+      aria-disabled={disabled || undefined}
+      className="flex min-h-11 min-w-11 items-center gap-2 rounded-xl border-[1.5px] border-line bg-white px-4 py-2 text-[0.9375rem] font-semibold text-ink transition-colors hover:bg-sand aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-white [&_svg]:size-[1.15rem]"
     >
       {children}
     </button>

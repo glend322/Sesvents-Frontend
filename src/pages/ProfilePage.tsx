@@ -225,7 +225,7 @@ function SettingsCards() {
         <Toggle
           icon={<Volume2 className="size-4" />}
           label="Bacakan jawaban otomatis"
-          desc="Untuk teman atau guru yang mendengar. Tetap bisa dibacakan lewat tombol Dengarkan."
+          desc="Untuk teman atau guru yang mendengar."
           checked={s.autoSpeak}
           onChange={(autoSpeak) => s.update({ autoSpeak })}
         />

@@ -289,14 +289,12 @@ function SignPlayerFull({
           </button>
         </div>
 
-        <div className="mb-6 mt-8 grid grid-cols-2 gap-3">
-          {speech ? (
+        <div className={cn('mb-6 mt-8 grid gap-3', speech ? 'grid-cols-2' : 'grid-cols-1')}>
+          {speech && (
             <button type="button" onClick={speech.onSpeak} className="flex h-14 items-center justify-center gap-2 rounded-xl bg-white/10 text-base font-bold hover:bg-white/15">
               {speech.speaking ? <VolumeX className="size-5" aria-hidden="true" /> : <Volume2 className="size-5" aria-hidden="true" />}
               {speech.speaking ? 'Hentikan' : 'Dengarkan'}
             </button>
-          ) : (
-            <span />
           )}
           <p className="flex h-14 items-center justify-center rounded-xl bg-white/10 text-base font-bold tabular-nums" aria-live="polite">
             Kata {Math.min(words.length, active + 1)} dari {words.length}

@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import { SignCaption } from '@/components/ui/sign-caption';
 import { SignerAvatar } from '@/components/ui/signer-avatar';
 import { clock, durationSec, materiById, sectionAt, sectionSec, sectionStart, subjectLabel, type Materi } from '@/data/materi';
-import { Bubble, Composer, ErrorNote, Typing } from '@/features/chatbot/ChatParts';
+import { Bubble, Composer, ErrorNote, simplifyPrompt, Typing } from '@/features/chatbot/ChatParts';
 import { useChat } from '@/features/chatbot/useChat';
 import { signWordsForText, SkeletonPlayer } from '@/features/skeleton-animation';
 import { useSpeechOut } from '@/hooks/useSpeechOut';
@@ -187,8 +187,6 @@ function Watch({ m }: { m: Materi }) {
       onTyping={onTyping}
       chip={pin && started ? { label: `${clock(tNow)} · ${section.title}`, onRemove: () => setPin(false) } : null}
       seek={seek}
-      speaking={tts.speaking}
-      speak={(t) => (tts.speaking ? tts.cancel() : void tts.speak(t))}
       autoPlaySign={settings.autoPlaySign}
       dark={fullscreen}
       onClose={fullscreen ? () => setAskOpen(false) : undefined}
@@ -512,8 +510,6 @@ function VideoChat({
   onTyping,
   chip,
   seek,
-  speaking,
-  speak,
   autoPlaySign,
   dark,
   onClose,
@@ -526,8 +522,6 @@ function VideoChat({
   onTyping: (t: boolean) => void;
   chip: { label: string; onRemove: () => void } | null;
   seek: (t: number) => void;
-  speaking: boolean;
-  speak: (text: string) => void;
   autoPlaySign: boolean;
   dark: boolean;
   onClose?: () => void;
@@ -544,6 +538,7 @@ function VideoChat({
     if (x.role === 'user') lastT = x.videoTSec ?? null;
     return { x, t: x.role === 'assistant' ? lastT : null };
   });
+  const lastAssistantId = [...chat.messages].reverse().find((x) => x.role === 'assistant')?.id;
 
   return (
     <section
@@ -588,8 +583,8 @@ function VideoChat({
                   key={x.id}
                   m={x}
                   autoPlay={!!x.fresh && autoPlaySign}
-                  speaking={speaking}
-                  onSpeak={() => speak(x.content)}
+                  busy={chat.sending}
+                  onSimplify={() => void send(simplifyPrompt(x.content, x.id === lastAssistantId), 'text')}
                   onRetry={() => void chat.retry(x)}
                   onDiscard={() => chat.discard(x.id)}
                   onSeek={seek}
