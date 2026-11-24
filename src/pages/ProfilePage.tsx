@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Captions, Check, CheckCircle2, FileText, Hand, LogOut, Mail, MessageCircleQuestion, Pencil, Phone, PlayCircle, RotateCcw, TriangleAlert, Type, X } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import { Avatar } from '@/auth/components/Avatar';
@@ -8,19 +8,11 @@ import { Button } from '@/components/ui/button';
 import { chatService, type ChatActivity } from '@/features/chatbot/chat.service';
 import { sessionsStore } from '@/features/chatbot/sessions.store';
 import { useMateriStore } from '@/state/materi.store';
+import { useDisplayName } from '@/state/nickname.store';
 import { CAPTION_SIZE_LABEL, TEXT_SCALE_LABEL, useSettings, type Settings } from '@/state/SettingsContext';
 import { cn } from '@/lib/utils';
 
 const BELUM_ADA = 'Belum tersedia';
-const nicknameKey = (id: string) => `lunar.nickname.${id}`;
-
-function loadNickname(id: string): string {
-  try {
-    return localStorage.getItem(nicknameKey(id))?.trim() ?? '';
-  } catch {
-    return '';
-  }
-}
 
 /**
  * Profil pengguna: kartu identitas (kiri, gaya kartu awan), Kegiatan belajarku + pengaturan (kanan).
@@ -31,27 +23,34 @@ export default function ProfilePage() {
   const { profile, logout } = useAuth();
   const navigate = useNavigate();
   const [logoutError, setLogoutError] = useState(false);
-  const [nickname, setNickname] = useState(() => (profile ? loadNickname(profile.id) : ''));
+  const { displayName, setNickname } = useDisplayName(profile);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState('');
-  const [nameSavedMsg, setNameSavedMsg] = useState('');
+  const [savedHint, setSavedHint] = useState(false);
   const nickInputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const editBtnRef = useRef<HTMLButtonElement>(null);
+  const savedTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    setNickname(profile ? loadNickname(profile.id) : '');
     setEditingName(false);
-  }, [profile]);
+    setSavedHint(false);
+  }, [profile?.id]);
+
+  useEffect(
+    () => () => {
+      if (savedTimer.current !== null) window.clearTimeout(savedTimer.current);
+    },
+    [],
+  );
 
   if (!profile) return null;
-  const displayName = nickname || profile.name;
   const first = displayName.split(' ')[0];
 
   const startEdit = () => {
     setDraftName(displayName);
     setEditingName(true);
-    setNameSavedMsg('');
+    setSavedHint(false);
     requestAnimationFrame(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
@@ -65,17 +64,14 @@ export default function ProfilePage() {
 
   const saveNickname = (e: FormEvent) => {
     e.preventDefault();
-    const trimmed = draftName.trim();
-    const next = trimmed && trimmed !== profile.name ? trimmed : '';
-    setNickname(next);
-    try {
-      if (next) localStorage.setItem(nicknameKey(profile.id), next);
-      else localStorage.removeItem(nicknameKey(profile.id));
-    } catch {
-      // penyimpanan diblokir: nama panggilan tetap berlaku di sesi ini
-    }
+    setNickname(draftName);
     setEditingName(false);
-    setNameSavedMsg('Nama panggilan disimpan.');
+    setSavedHint(true);
+    if (savedTimer.current !== null) window.clearTimeout(savedTimer.current);
+    savedTimer.current = window.setTimeout(() => {
+      setSavedHint(false);
+      savedTimer.current = null;
+    }, 1800);
     requestAnimationFrame(() => editBtnRef.current?.focus());
   };
 
@@ -99,64 +95,81 @@ export default function ProfilePage() {
         <div className="relative flex flex-col items-center text-center">
           <Avatar name={first} photoUrl={profile.photoUrl} className="size-28 ring-4 ring-white shadow-soft" textClassName="text-[2.5rem]" />
           {editingName ? (
-            <form onSubmit={saveNickname} className="mt-4 flex w-full items-center justify-center gap-1.5">
-              <label htmlFor={nickInputId} className="sr-only">
-                Nama panggilan
-              </label>
-              <input
-                ref={inputRef}
-                id={nickInputId}
-                name="nickname"
-                type="text"
-                value={draftName}
-                onChange={(e) => setDraftName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape' && !e.nativeEvent.isComposing) cancelEdit();
-                }}
-                maxLength={40}
-                autoComplete="nickname"
-                enterKeyHint="done"
-                placeholder={profile.name}
-                className="min-h-11 min-w-0 flex-1 rounded-xl border-[1.5px] border-ink bg-white px-3 text-center text-base font-bold text-brand-950 focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400"
-              />
-              <button
-                type="submit"
-                aria-label="Simpan nama panggilan"
-                className="grid size-11 shrink-0 place-items-center rounded-xl bg-ink text-white transition-colors hover:bg-brand-800"
+            <div className="mt-3.5 w-full max-w-[16.5rem]">
+              <form
+                onSubmit={saveNickname}
+                className="flex items-center gap-1 rounded-2xl border border-brand-200 bg-white p-1 shadow-soft transition-colors focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-100"
               >
-                <Check className="size-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                onClick={cancelEdit}
-                aria-label="Batal ubah nama panggilan"
-                className="grid size-11 shrink-0 place-items-center rounded-xl border border-line bg-white text-ink transition-colors hover:bg-sand"
-              >
-                <X className="size-4" aria-hidden="true" />
-              </button>
-            </form>
+                <label htmlFor={nickInputId} className="sr-only">
+                  Nama panggilan
+                </label>
+                <input
+                  ref={inputRef}
+                  id={nickInputId}
+                  name="nickname"
+                  type="text"
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape' && !e.nativeEvent.isComposing) cancelEdit();
+                  }}
+                  maxLength={40}
+                  autoComplete="nickname"
+                  enterKeyHint="done"
+                  placeholder={profile.name}
+                  className="min-h-9 min-w-0 flex-1 bg-transparent pl-3 pr-1 text-center text-base font-bold text-brand-950 placeholder:font-normal placeholder:text-muted/60 focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  aria-label="Simpan nama panggilan"
+                  className="grid size-9 shrink-0 place-items-center rounded-xl bg-ink text-white transition-colors hover:bg-brand-800"
+                >
+                  <Check className="size-4" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  aria-label="Batal ubah nama panggilan"
+                  className="grid size-9 shrink-0 place-items-center rounded-xl text-muted transition-colors hover:bg-sand hover:text-ink"
+                >
+                  <X className="size-4" aria-hidden="true" />
+                </button>
+              </form>
+              <p className="mt-1.5 text-[0.6875rem] text-muted">Enter untuk simpan · Esc batal</p>
+            </div>
           ) : (
-            <div className="mt-4 flex max-w-full items-center justify-center gap-1">
-              <h1 className="truncate text-xl font-extrabold tracking-[-0.03em] text-brand-950">{displayName}</h1>
+            <div className="relative mt-4 inline-flex max-w-full items-center justify-center px-8">
+              <h1 className="truncate text-[1.375rem] font-extrabold leading-tight tracking-[-0.03em] text-brand-950">{displayName}</h1>
               <button
                 ref={editBtnRef}
                 type="button"
                 onClick={startEdit}
                 aria-label="Ubah nama panggilan"
                 title="Ubah nama panggilan"
-                className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-sand hover:text-ink"
+                className="absolute right-0.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-muted/65 transition-colors hover:bg-sand hover:text-ink"
               >
-                <Pencil className="size-3.5" aria-hidden="true" />
+                <Pencil className="size-3" aria-hidden="true" />
               </button>
             </div>
           )}
-          <span role="status" className="sr-only">
-            {nameSavedMsg}
-          </span>
-          <p className="mt-0.5 text-sm font-medium text-muted">{profile.name}</p>
-          <span className="mt-2.5 rounded-full bg-white px-3 py-1 text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-brand-600 shadow-soft">Pengguna</span>
+          <div role="status" className="min-h-0">
+            <AnimatePresence>
+              {savedHint && (
+                <motion.p
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="mt-1 inline-flex items-center gap-1 text-[0.75rem] font-semibold text-ok-ink"
+                >
+                  <Check className="size-3" aria-hidden="true" /> Nama tersimpan
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </div>
+          <p className="mt-1.5 text-sm italic text-muted">{profile.name}</p>
+          <span className="mt-3.5 rounded-full bg-white px-3.5 py-1 text-[0.6875rem] font-bold uppercase tracking-[0.12em] text-brand-600 shadow-soft">Pengguna</span>
         </div>
-        <hr className="relative my-5 border-line" />
+        <hr className="relative my-6 border-line" />
         <dl className="relative flex flex-col gap-4">
           <InfoRow icon={<Mail className="size-[1.1rem]" />} label="Email" value={profile.email?.trim() || BELUM_ADA} />
           <InfoRow icon={<Phone className="size-[1.1rem]" />} label="No. Telp" value={profile.phone?.trim() || BELUM_ADA} />

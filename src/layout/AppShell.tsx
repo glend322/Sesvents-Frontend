@@ -10,6 +10,7 @@ import { APP } from '@/config/app.config';
 import { chatService, type ChatSession } from '@/features/chatbot/chat.service';
 import { DeleteChatDialog } from '@/features/chatbot/DeleteChatDialog';
 import { sessionsStore, useSessions } from '@/features/chatbot/sessions.store';
+import { useDisplayName } from '@/state/nickname.store';
 import { cn } from '@/lib/utils';
 
 /**
@@ -49,6 +50,7 @@ const RECENT = 4;
 
 export function AppShell() {
   const { profile } = useAuth();
+  const { displayName } = useDisplayName(profile);
   const location = useLocation();
   const navigate = useNavigate();
   const sessions = useSessions();
@@ -268,11 +270,11 @@ export function AppShell() {
           className={({ isActive }) =>
             cn('mt-3 flex items-center gap-3 rounded-2xl border p-2.5 transition-colors', isActive ? 'border-brand-200 bg-brand-50' : 'border-line bg-white hover:bg-tint')
           }
-          aria-label={`Profil ${profile?.name ?? ''}. Buka profil dan pengaturan.`}
+          aria-label={`Profil ${displayName}. Buka profil dan pengaturan.`}
         >
-          <Avatar name={profile?.name?.split(' ')[0]} photoUrl={profile?.photoUrl} className="size-10" textClassName="text-sm" />
+          <Avatar name={displayName.split(' ')[0]} photoUrl={profile?.photoUrl} className="size-10" textClassName="text-sm" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-extrabold text-brand-900">{profile?.name}</span>
+            <span className="block truncate text-sm font-extrabold text-brand-900">{displayName}</span>
             <span className="block truncate text-xs text-muted">Pengguna</span>
           </span>
           <Settings className="size-4 shrink-0 text-muted" aria-hidden="true" />
@@ -291,7 +293,7 @@ export function AppShell() {
           <Logo />
         </a>
         <NavLink to="/profil" aria-label="Profil dan pengaturan">
-          <Avatar name={profile?.name} photoUrl={profile?.photoUrl} className="size-9" textClassName="text-xs" />
+          <Avatar name={displayName.split(' ')[0]} photoUrl={profile?.photoUrl} className="size-9" textClassName="text-xs" />
         </NavLink>
       </header>
 

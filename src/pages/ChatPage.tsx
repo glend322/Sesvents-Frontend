@@ -17,6 +17,7 @@ import { useSpeechOut } from '@/hooks/useSpeechOut';
 import { useShellChrome } from '@/layout/AppShell';
 import { useSettings } from '@/state/SettingsContext';
 import { useMateriStore } from '@/state/materi.store';
+import { useDisplayName } from '@/state/nickname.store';
 import { cn } from '@/lib/utils';
 
 type IncomingState = { prompt?: string; autoSend?: boolean } | null;
@@ -221,13 +222,14 @@ export default function ChatPage() {
 
 function HomeBanner({ mood }: { mood: MascotMood }) {
   const { profile } = useAuth();
-  const firstName = profile?.name.split(' ')[0] ?? '';
+  const { displayName } = useDisplayName(profile);
+  const firstName = displayName.split(' ')[0] ?? '';
   return (
     <section className="relative isolate overflow-hidden bg-tiger px-5 pb-16 pt-5 lg:rounded-3xl lg:px-8 lg:pb-14 lg:pt-8">
       <div className="flex items-center justify-between lg:hidden">
         <Logo />
         <NavLink to="/profil" aria-label="Profil dan pengaturan">
-          <Avatar name={profile?.name} photoUrl={profile?.photoUrl} className="size-11" textClassName="text-sm" />
+          <Avatar name={firstName} photoUrl={profile?.photoUrl} className="size-11" textClassName="text-sm" />
         </NavLink>
       </div>
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="relative z-10 mt-7 max-w-[15rem] sm:max-w-xs lg:mt-0">
