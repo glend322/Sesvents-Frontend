@@ -3,8 +3,8 @@ import { gsap, useGSAP, MOTION_OK } from '../../lib/gsap';
 import { EASE } from '../../animations/tokens';
 import { Icon, type IconName } from '../ui/Icon';
 const FEATURES: { icon: IconName; title: string; desc: string }[] = [
-  { icon: 'play', title: 'Video Pembelajaran', desc: 'Dengan bahasa isyarat' },
-  { icon: 'captions', title: 'Teks & Audio', desc: 'Untuk semua kebutuhan' },
+  { icon: 'play', title: 'Konten Pembelajaran', desc: 'Dengan bahasa isyarat' },
+  { icon: 'captions', title: 'Takarir Interaktif', desc: 'Tanya isi konten video' },
   { icon: 'message', title: 'Chatbot AI', desc: 'Tanya apa saja' },
   { icon: 'globe', title: 'Akses Fleksibel', desc: 'Di mana saja, kapan saja' },
 ];

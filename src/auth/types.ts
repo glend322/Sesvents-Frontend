@@ -1,19 +1,20 @@
-/** Tipe bersama alur akun siswa (ADR-051 D2). */
+/** Tipe bersama alur akun siswa (ADR-051 D2, ADR-056). */
 
-/**
- * Profil siswa yang dikembalikan auth service saat login berhasil.
- * Bentuknya mengikuti StudentOut di BE (backend/app/api/student.py), jadi penggantian
- * sumber data (dummy → API) tidak mengubah komponen UI.
- */
 export type SiswaProfile = {
   id: string;
-  /** Nomor Induk Siswa. Sekaligus identitas login. */
-  nis: string;
+  /** Email login siswa. */
+  email: string;
+  /** Nomor telepon siswa. */
+  phone?: string;
+  /** Opsional: Nomor Induk Siswa (jika akun sekolah). */
+  nis?: string;
   name: string;
   /** Mis. "5A". */
   className?: string;
   grade?: number;
-  school: string;
+  /** Opsional: kode kelas dari sekolah (mis. "LNR-5A21"). */
+  classCode?: string;
+  school?: string;
   /** URL foto profil. Opsional; bila kosong/gagal dimuat, UI memakai avatar inisial. */
   photoUrl?: string;
 };
@@ -26,7 +27,7 @@ export type SiswaSession = {
   loginAt: number;
   /** Epoch ms interaksi terakhir. Dasar perhitungan idle timeout. */
   lastActiveAt: number;
-  /** Bearer token dari BE (POST /api/student/auth/login). Kosong di mode dummy. */
+  /** Bearer token dari BE. */
   accessToken?: string;
   /** Dipakai untuk memperbarui token tanpa login ulang (ADR-052). */
   refreshToken?: string;
@@ -38,7 +39,7 @@ export type Tokens = { accessToken: string; refreshToken: string; expiresAt: num
 
 export type LoginResult =
   | { ok: true; profile: SiswaProfile; tokens?: Tokens }
-  | { ok: false; reason: 'invalid-credentials' | 'service-error' };
+  | { ok: false; reason: 'invalid-credentials' | 'email-exists' | 'validation-error' | 'service-error'; message?: string };
 
 /** Alasan sesi berakhir, dipakai halaman login untuk menampilkan pemberitahuan. */
 export type SessionEndedReason = 'expired' | 'logout';

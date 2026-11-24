@@ -17,7 +17,7 @@ const TIERS: Tier[] = [
     range: '≥ 85%',
     value: 92,
     title: 'Langsung tampil.',
-    desc: 'Teks langsung muncul, lalu dibacakan untuk guru atau dikirim ke chatbot.',
+    desc: 'Teks langsung muncul, lalu dikirim ke chatbot.',
     bar: 'bg-ok',
     mock: (
       <div className="flex items-center justify-between rounded-2xl bg-white p-3.5">
@@ -32,7 +32,7 @@ const TIERS: Tier[] = [
     range: '60–84%',
     value: 72,
     title: 'Dikonfirmasi dulu.',
-    desc: 'Teks baru dikirim setelah siswa menekan Konfirmasi.',
+    desc: 'Teks baru dikirim setelah pengguna menekan Konfirmasi.',
     bar: 'bg-brand-400',
     mock: (
       <div className="rounded-2xl bg-white p-3.5">
@@ -100,7 +100,7 @@ export function Confidence() {
           </h2>
           <p className="mt-5 max-w-[500px] text-[15px] leading-relaxed text-brand-800">
             Salah paham membuat belajar jadi tersendat. Karena itu setiap hasil pengenalan isyarat punya tingkat
-            keyakinan, dan siswa selalu bisa memilih untuk mengetik.
+            keyakinan, dan pengguna selalu bisa memilih untuk mengetik.
           </p>
         </div>
 

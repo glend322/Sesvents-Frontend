@@ -51,7 +51,7 @@ export default function VideoWatchPage() {
         <div>
           <p className="text-lg font-extrabold">Video tidak ditemukan</p>
           <Link to="/video" className="mt-2 inline-block text-sm font-bold text-brand-600 hover:underline">
-            Kembali ke Video Pelajaran
+            Kembali ke Konten Pembelajaran
           </Link>
         </div>
       </div>
@@ -198,7 +198,7 @@ function Watch({ m }: { m: Materi }) {
   return (
     <div>
       <Link to="/video" className="mb-3 inline-flex items-center gap-1.5 rounded-xl text-sm font-bold text-brand-600 hover:text-brand-900">
-        <ArrowLeft className="size-4" aria-hidden="true" /> Video Pelajaran
+        <ArrowLeft className="size-4" aria-hidden="true" /> Konten Pembelajaran
       </Link>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_23rem] xl:grid-cols-[minmax(0,1fr)_25rem]">

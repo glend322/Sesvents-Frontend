@@ -1,56 +1,67 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { CircleAlert, Clock, IdCard, Info, LoaderCircle, Lock, Wifi } from 'lucide-react';
-import { TigerMascot } from '@/components/mascot/TigerMascot';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CircleAlert, Clock, Info, LoaderCircle, Wifi } from 'lucide-react';
+import { TigerMascot, type MascotMood } from '@/components/mascot/TigerMascot';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
 import { APP } from '@/config/app.config';
 import { cn } from '@/lib/utils';
 import { AUTH } from '../auth.config';
-import { readyAccounts, validateCredentialLengths } from '../auth.service';
+import { isValidEmail, isValidPhone, validateCredentialLengths } from '../auth.service';
 import { useAuth } from '../AuthContext';
 import { Field } from '../components/Field';
 import { ForgotPasswordDialog } from './ForgotPasswordDialog';
 
 /**
- * Halaman masuk siswa (ADR-051 D2, panduan ui/01-login). Satu langkah, dua kolom: NIS + password
- * dari sekolah. Siswa yang sesinya masih valid langsung masuk tanpa melihat layar ini.
- *
- * Layar kecil: banner oranye + maskot di atas, form di "sheet" putih. Desktop: banner jadi panel
- * kiri, form di kanan. Tiga keadaan dari panduan:
- *  A. isi NIS        kolom aktif bergaris hitam tebal; kotak "Akun siap pakai" hanya di build demo
- *  B. salah password pesan ramah + sisa percobaan, kolom password merah
- *  C. terkunci       tombol jadi hitung mundur; error koneksi diletakkan terpisah di bawah
+ * Halaman Masuk & Buat Akun (Email + Password).
+ * - Mode Masuk: Email, Password, Masuk, Belum punya akun? Daftar, Lupa password?.
+ * - Mode Buat Akun: Nama lengkap, Email, Nomor telepon, Password (Minimal 8 huruf atau angka.),
+ *   kotak pengingat orang tua/guru, Daftar, Sudah punya akun? Masuk.
+ * - Transisi antar mode Masuk & Buat Akun dibuat seragam dan stabil (posisi banner & maskot tidak melompat).
  */
-const hintAccounts = readyAccounts;
+type AuthMode = 'login' | 'register';
 
 const mmss = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 
+const FORM_TRANSITION = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: 10 },
+  transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const },
+};
+
 export function LoginPage() {
-  const { login, isAuthenticated, loading, endedReason, clearEndedReason } = useAuth();
+  const { login, register, isAuthenticated, loading, endedReason, clearEndedReason } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from;
 
-  const [nis, setNis] = useState('');
+  const [mode, setMode] = useState<AuthMode>('login');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  /** Pesan salah NIS/password (kotak merah muda di atas form). */
+  /** Pesan salah email/password (kotak merah muda di atas form). */
   const [message, setMessage] = useState<ReactNode>(null);
   /** Server tak terjangkau (kotak terpisah di bawah). */
   const [netError, setNetError] = useState(false);
-  const [fieldError, setFieldError] = useState<{ nis?: string; password?: string }>({});
+  const [fieldError, setFieldError] = useState<{ fullName?: string; email?: string; phone?: string; password?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [lockUntil, setLockUntil] = useState<number | null>(null);
   const [lockLeft, setLockLeft] = useState(0);
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [typingField, setTypingField] = useState(false);
   const forgotRef = useRef<HTMLButtonElement>(null);
 
   const locked = lockLeft > 0;
+  const mascotMood: MascotMood = submitting ? 'thinking' : typingField ? 'typing' : 'idle';
 
   useEffect(() => {
-    if (isAuthenticated) navigate(from || '/chat', { replace: true });
+    if (isAuthenticated) {
+      navigate(from || '/chat', { replace: true });
+    }
   }, [isAuthenticated, from, navigate]);
 
   useEffect(() => {
@@ -69,28 +80,53 @@ export function LoginPage() {
     return () => window.clearInterval(id);
   }, [lockUntil]);
 
-  const onEdit = (setter: (v: string) => void, key: 'nis' | 'password') => (value: string) => {
-    setter(value);
-    if (!locked) setMessage(null);
+  const switchMode = (nextMode: 'login' | 'register') => {
+    setMode(nextMode);
+    setMessage(null);
     setNetError(false);
-    setFieldError((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+    setFieldError({});
     if (endedReason) clearEndedReason();
   };
 
-  const onSubmit = async (e: FormEvent) => {
+  const onEdit =
+    (setter: (v: string) => void, key: 'fullName' | 'email' | 'phone' | 'password') =>
+    (value: string) => {
+      setter(value);
+      if (!locked) setMessage(null);
+      setNetError(false);
+      if (key === 'phone') {
+        const trimmed = value.trim();
+        const phoneErr = trimmed && !isValidPhone(trimmed) ? 'Nomor telepon harus berupa angka.' : undefined;
+        setFieldError((prev) => (prev.phone !== phoneErr ? { ...prev, phone: phoneErr } : prev));
+      } else {
+        setFieldError((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+      }
+      if (endedReason) clearEndedReason();
+    };
+
+  const onSubmitLogin = async (e: FormEvent) => {
     e.preventDefault();
     if (locked || submitting) return;
 
-    const id = nis.trim();
+    const cleanEmail = email.trim().toLowerCase();
     const pass = password;
     const missing: typeof fieldError = {};
-    if (!id) missing.nis = 'Isi NIS-mu dulu, ya.';
-    if (!pass.trim()) missing.password = 'Isi password-mu dulu, ya.';
-    if (missing.nis || missing.password) {
+
+    if (!cleanEmail) {
+      missing.email = 'Isi email kamu dulu, ya.';
+    } else if (!isValidEmail(cleanEmail)) {
+      missing.email = 'Format email belum sesuai (contoh: nadia.putri@gmail.com).';
+    }
+    if (!pass.trim()) {
+      missing.password = 'Isi password-mu dulu, ya.';
+    }
+
+    if (missing.email || missing.password) {
       setFieldError(missing);
       return;
     }
-    const tooLong = validateCredentialLengths(id, pass);
+
+    const tooLong = validateCredentialLengths(cleanEmail, pass);
     if (tooLong) {
       setMessage(tooLong);
       return;
@@ -99,7 +135,7 @@ export function LoginPage() {
     setSubmitting(true);
     setMessage(null);
     setNetError(false);
-    const result = await login(id, pass);
+    const result = await login(cleanEmail, pass);
     setSubmitting(false);
 
     if (result.ok) {
@@ -123,12 +159,87 @@ export function LoginPage() {
     setFieldError({ password: 'Cek lagi huruf besar dan kecil.' });
     setMessage(
       <>
-        NIS atau password belum cocok. Sisa <b className="font-bold">{AUTH.maxAttempts - next} kali</b> coba lagi.
+        Email atau password belum cocok. Sisa <b className="font-bold">{AUTH.maxAttempts - next} kali</b> coba lagi.
       </>,
     );
   };
 
-  // Sesi tersimpan sedang diperiksa / sudah login: jangan tampilkan form sama sekali.
+  const onSubmitRegister = async (e: FormEvent) => {
+    e.preventDefault();
+    if (submitting) return;
+
+    const cleanName = fullName.trim();
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.trim();
+    const pass = password;
+    const missing: typeof fieldError = {};
+
+    if (!cleanName) {
+      missing.fullName = 'Isi nama lengkapmu dulu, ya.';
+    }
+    if (!cleanEmail) {
+      missing.email = 'Isi email kamu dulu, ya.';
+    } else if (!isValidEmail(cleanEmail)) {
+      missing.email = 'Format email belum sesuai (contoh: nadia.putri@gmail.com).';
+    }
+    if (!cleanPhone) {
+      missing.phone = 'Isi nomor teleponmu dulu, ya.';
+    } else if (!isValidPhone(cleanPhone)) {
+      missing.phone = 'Nomor telepon harus berupa angka.';
+    }
+    if (!pass.trim()) {
+      missing.password = 'Isi password-mu dulu, ya.';
+    } else if (pass.length < AUTH.minPasswordLength) {
+      missing.password = `Minimal ${AUTH.minPasswordLength} huruf atau angka.`;
+    }
+
+    if (missing.fullName || missing.email || missing.phone || missing.password) {
+      setFieldError(missing);
+      return;
+    }
+
+    const tooLong = validateCredentialLengths(cleanEmail, pass);
+    if (tooLong) {
+      setMessage(tooLong);
+      return;
+    }
+
+    setSubmitting(true);
+    setMessage(null);
+    setNetError(false);
+    const result = await register(cleanName, cleanEmail, pass, cleanPhone);
+    setSubmitting(false);
+
+    if (result.ok) {
+      navigate(from || '/chat', { replace: true });
+      return;
+    }
+    if (result.reason === 'email-exists') {
+      const msgLower = (result.message ?? '').toLowerCase();
+      if (msgLower.includes('phone') || msgLower.includes('telepon') || msgLower.includes('nomor')) {
+        setFieldError({ phone: result.message || 'Nomor telepon ini sudah terdaftar.' });
+      } else {
+        setFieldError({ email: result.message || 'Email ini sudah terdaftar. Coba masuk saja, ya.' });
+      }
+      return;
+    }
+    if (result.reason === 'validation-error') {
+      const detail = result.message;
+      const detailLower = (detail ?? '').toLowerCase();
+      if (detailLower.includes('phone') || detailLower.includes('telepon')) {
+        setFieldError({ phone: detail || 'Nomor telepon belum sesuai format.' });
+      } else if (detailLower.includes('email')) {
+        setFieldError({ email: detail || 'Format email belum sesuai.' });
+      } else if (detailLower.includes('full_name') || detailLower.includes('name') || detailLower.includes('nama')) {
+        setFieldError({ fullName: detail || 'Nama lengkap belum sesuai.' });
+      } else {
+        setMessage(detail || 'Password terlalu lemah atau data belum valid. Coba kombinasikan huruf dan angka.');
+      }
+      return;
+    }
+    setNetError(true);
+  };
+
   if (loading || isAuthenticated) {
     return (
       <div className="grid min-h-dvh place-items-center bg-sand" role="status" aria-live="polite">
@@ -146,152 +257,326 @@ export function LoginPage() {
         ? 'Kamu sudah keluar. Sampai jumpa lagi!'
         : null;
 
-  // Banner dipendekkan saat ada pesan, supaya pesan dan form tetap terlihat tanpa menggulir.
+  const isRegister = mode === 'register';
   const compact = !!message || locked || !!notice;
 
   return (
-    <div className="flex min-h-dvh flex-col bg-white lg:grid lg:grid-cols-[1fr_1fr]">
-      {/* ---------- Banner ---------- */}
+    <div className="flex min-h-dvh flex-col bg-white lg:grid lg:grid-cols-[1.06fr_1fr]">
+      {/* ==================== PANEL ORANYE + MASKOT + PEMISAH GELOMBANG ==================== */}
       <section
         className={cn(
-          'relative isolate overflow-hidden bg-tiger px-6 pt-8 lg:flex lg:flex-col lg:px-14 lg:pb-14 lg:pt-12',
-          compact ? 'pb-12' : 'pb-20',
+          'relative isolate overflow-hidden bg-tiger px-6 pb-16 pt-7 sm:px-10',
+          'lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:justify-between lg:py-10 lg:pl-14 lg:pr-24 xl:py-12 xl:pl-20 xl:pr-28',
         )}
       >
-        <a href={APP.landingUrl} aria-label="LUNAR, ke halaman utama" className="relative z-10 inline-flex rounded-xl">
+        {/* Logo LUNAR */}
+        <a
+          href={APP.landingUrl}
+          aria-label="LUNAR, ke halaman utama"
+          className="relative z-10 inline-flex w-fit shrink-0 rounded-xl"
+        >
           <Logo />
         </a>
 
-        <div className="relative z-10 mt-8 max-w-[16rem] sm:max-w-sm lg:mt-auto lg:max-w-md">
-          <h1 className="text-[1.625rem] font-black uppercase leading-[1.1] tracking-[0.01em] text-ink lg:text-[2.75rem]">
-            {compact ? 'Masuk dulu, yuk' : 'Masuk untuk mulai belajar'}
-          </h1>
-          {!compact && <p className="mt-3 text-base leading-relaxed text-ink lg:text-lg">Pakai NIS dan password dari sekolahmu.</p>}
+        {/* Maskot di Desktop: tinggi & posisi tetap sama persis di mode Masuk maupun Buat Akun */}
+        <div className="relative z-10 my-auto hidden shrink-0 items-center justify-center py-2 lg:flex">
+          <TigerMascot
+            mood={mascotMood}
+            className="h-[15rem] w-[12.75rem] xl:h-[17rem] xl:w-[14.5rem]"
+          />
         </div>
 
+        {/* Teks Judul & Subjudul dengan tinggi tetap (fixed height) agar posisi maskot & teks tidak bergeser sedikit pun */}
+        <div className="relative z-10 mt-6 h-[6.5rem] shrink-0 sm:mt-8 sm:h-[7.25rem] lg:mt-0 lg:h-[9.25rem] lg:max-w-md xl:h-[9.75rem]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mode}
+              initial={FORM_TRANSITION.initial}
+              animate={FORM_TRANSITION.animate}
+              exit={FORM_TRANSITION.exit}
+              transition={FORM_TRANSITION.transition}
+            >
+              <h1 className="max-w-[16.5rem] text-[1.625rem] font-black uppercase leading-[1.08] tracking-[0.01em] text-ink sm:max-w-sm sm:text-[2rem] lg:max-w-md lg:text-[2.45rem] xl:text-[2.7rem]">
+                {isRegister
+                  ? 'Buat akun, yuk'
+                  : compact
+                    ? 'Masuk dulu, yuk'
+                    : 'Masuk untuk mulai belajar'}
+              </h1>
+              {!compact && (
+                <p className="mt-2.5 max-w-[12.75rem] text-[0.9375rem] leading-snug text-ink sm:max-w-xs sm:text-base lg:mt-3 lg:max-w-md lg:text-[1.0625rem]">
+                  {isRegister
+                    ? 'Daftar dengan mudah untuk mulai belajar bersama LUNAR.'
+                    : 'Pakai email dan password akunmu.'}
+                </p>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Maskot di Mobile/Tablet (< lg): posisi tetap stabil di kedua mode */}
         <TigerMascot
-          className={cn(
-            'absolute right-1 z-0 h-[10.5rem] w-[9rem] lg:bottom-auto lg:right-14 lg:top-28 lg:h-[19rem] lg:w-[16rem]',
-            compact ? '-bottom-20' : '-bottom-10',
-          )}
+          mood={mascotMood}
+          className="absolute -bottom-7 right-2 z-0 h-[9.25rem] w-[7.75rem] sm:right-6 sm:h-[11rem] sm:w-[9.25rem] lg:hidden"
         />
+
+        {/* Pemisah Gelombang Organik Berlapis — Desktop */}
+        <DesktopWaveDivider />
+
+        {/* Pemisah Gelombang Organik Berlapis — Mobile & Tablet */}
+        <MobileWaveDivider />
       </section>
 
-      {/* ---------- Form ---------- */}
-      <section className="relative z-10 -mt-6 flex flex-1 flex-col rounded-t-3xl bg-white px-6 pb-6 pt-7 lg:mt-0 lg:items-center lg:justify-center lg:rounded-none lg:px-10">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className="flex w-full flex-1 flex-col lg:max-w-[26rem] lg:flex-none"
-        >
-          <div aria-live="polite" role="status">
-            {locked ? (
-              <Alert tone="cream" icon={<Clock />}>
-                Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi.
-              </Alert>
-            ) : message ? (
-              <Alert tone="error" icon={<CircleAlert />}>
-                {message}
-              </Alert>
-            ) : notice ? (
-              <Alert tone="cream" icon={<Info />}>
-                {notice}
-              </Alert>
-            ) : null}
-          </div>
-
-          <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
-            <Field
-              label="NIS (Nomor Induk Siswa)"
-              icon={<IdCard className="size-5" strokeWidth={1.8} />}
-              value={nis}
-              onChange={(e) => onEdit(setNis, 'nis')(e.target.value)}
-              placeholder="Tulis NIS-mu"
-              autoComplete="username"
-              inputMode="numeric"
-              spellCheck={false}
-              error={fieldError.nis}
-            />
-            <Field
-              label="Password"
-              password
-              icon={<Lock className="size-5" strokeWidth={1.8} />}
-              value={password}
-              onChange={(e) => onEdit(setPassword, 'password')(e.target.value)}
-              placeholder="Masukkan password"
-              autoComplete="current-password"
-              error={fieldError.password}
-            />
-
-            <Button type="submit" size="lg" disabled={submitting || locked} className="mt-1 w-full text-base">
-              {locked ? (
-                <span className="tabular-nums">Coba lagi dalam {mmss(lockLeft)}</span>
-              ) : submitting ? (
-                <>
-                  <LoaderCircle className="anim-spin" aria-hidden="true" /> Memeriksa…
-                </>
-              ) : (
-                'Masuk'
-              )}
-            </Button>
-
-            {!compact && (
-              <button
-                ref={forgotRef}
-                type="button"
-                onClick={() => setForgotOpen(true)}
-                className="mx-auto rounded-lg px-2 py-1 text-[0.9375rem] font-semibold text-tiger-ink underline-offset-4 hover:underline"
-              >
-                Lupa password? Tanya wali kelas
-              </button>
-            )}
-          </form>
-
-          <div className="mt-auto flex flex-col gap-3 pt-8">
-            {netError && (
-              <Alert tone="error" icon={<Wifi />} role="alert">
-                Tidak bisa menghubungi server. Cek internet, lalu coba lagi.
-              </Alert>
-            )}
-
-            {hintAccounts.length > 0 && !compact && !netError && (
-              <div className="rounded-2xl border-[1.5px] border-dashed border-[#d9d1c5] px-4 py-3.5">
-                <p className="text-xs font-bold uppercase tracking-[0.1em] text-muted">Akun siap pakai</p>
-                <ul className="mt-2 flex flex-col gap-2">
-                  {hintAccounts.map((c) => (
-                    <li key={c.nis} className="flex items-center justify-between gap-3">
-                      <span className="text-[0.9375rem] font-semibold tabular-nums text-ink">{c.nis}</span>
-                      <Button
-                        variant="outline-tiger"
-                        size="sm"
-                        className="h-10 px-5 text-sm"
-                        onClick={() => {
-                          setNis(c.nis);
-                          setPassword(c.password);
-                          setMessage(null);
-                          setNetError(false);
-                          setFieldError({});
-                        }}
-                      >
-                        Pakai
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
+      {/* ==================== PANEL PUTIH / FORM ==================== */}
+      <section className="relative z-10 flex flex-1 flex-col bg-white px-6 pb-8 pt-6 sm:px-10 lg:items-center lg:justify-center lg:px-10 lg:py-12 xl:px-14">
+        <div className="mx-auto flex w-full max-w-[26rem] flex-1 flex-col justify-center lg:mx-0 lg:flex-none">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mode}
+              initial={FORM_TRANSITION.initial}
+              animate={FORM_TRANSITION.animate}
+              exit={FORM_TRANSITION.exit}
+              transition={FORM_TRANSITION.transition}
+              className="flex w-full flex-col"
+            >
+              <div aria-live="polite" role="status">
+                {locked && mode === 'login' ? (
+                  <Alert tone="cream" icon={<Clock />}>
+                    Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi.
+                  </Alert>
+                ) : message ? (
+                  <Alert tone="error" icon={<CircleAlert />}>
+                    {message}
+                  </Alert>
+                ) : notice && mode === 'login' ? (
+                  <Alert tone="cream" icon={<Info />}>
+                    {notice}
+                  </Alert>
+                ) : null}
               </div>
-            )}
-          </div>
-        </motion.div>
+
+              {mode === 'login' && (
+                /* ---------------- FORM MASUK ---------------- */
+                <>
+                  <form onSubmit={onSubmitLogin} noValidate className="flex flex-col gap-5">
+                    <Field
+                      label="Email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => onEdit(setEmail, 'email')(e.target.value)}
+                      onFocus={() => setTypingField(true)}
+                      onBlur={() => setTypingField(false)}
+                      placeholder="nadia.putri@gmail.com"
+                      autoComplete="email"
+                      inputMode="email"
+                      spellCheck={false}
+                      error={fieldError.email}
+                    />
+
+                    <Field
+                      label="Password"
+                      password
+                      value={password}
+                      onChange={(e) => onEdit(setPassword, 'password')(e.target.value)}
+                      onFocus={() => setTypingField(true)}
+                      onBlur={() => setTypingField(false)}
+                      placeholder="Masukkan password"
+                      autoComplete="current-password"
+                      error={fieldError.password}
+                    />
+
+                    <Button type="submit" size="lg" disabled={submitting || locked} className="mt-1 w-full text-base">
+                      {locked ? (
+                        <span className="tabular-nums">Coba lagi dalam {mmss(lockLeft)}</span>
+                      ) : submitting ? (
+                        <>
+                          <LoaderCircle className="anim-spin" aria-hidden="true" /> Memeriksa…
+                        </>
+                      ) : (
+                        'Masuk'
+                      )}
+                    </Button>
+                  </form>
+
+                  <div className="mt-5 flex flex-col items-center gap-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => switchMode('register')}
+                      className="rounded-lg px-2 py-0.5 text-[0.9375rem] font-bold text-tiger-ink underline-offset-4 hover:underline"
+                    >
+                      Belum punya akun? Daftar
+                    </button>
+
+                    <button
+                      ref={forgotRef}
+                      type="button"
+                      onClick={() => setForgotOpen(true)}
+                      className="rounded-lg px-2 py-0.5 text-[0.9375rem] font-semibold text-muted underline-offset-4 transition-colors hover:text-ink hover:underline"
+                    >
+                      Lupa password?
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {mode === 'register' && (
+                /* ---------------- FORM BUAT AKUN ---------------- */
+                <>
+                  <form onSubmit={onSubmitRegister} noValidate className="flex flex-col gap-4">
+                    <Field
+                      label="Nama lengkap"
+                      value={fullName}
+                      onChange={(e) => onEdit(setFullName, 'fullName')(e.target.value)}
+                      onFocus={() => setTypingField(true)}
+                      onBlur={() => setTypingField(false)}
+                      placeholder="Nadia Putri"
+                      autoComplete="name"
+                      error={fieldError.fullName}
+                    />
+
+                    <Field
+                      label="Email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => onEdit(setEmail, 'email')(e.target.value)}
+                      onFocus={() => setTypingField(true)}
+                      onBlur={() => setTypingField(false)}
+                      placeholder="nadia.putri@gmail.com"
+                      autoComplete="email"
+                      inputMode="email"
+                      spellCheck={false}
+                      error={fieldError.email}
+                    />
+
+                    <Field
+                      label="Nomor telepon"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => onEdit(setPhone, 'phone')(e.target.value)}
+                      onFocus={() => setTypingField(true)}
+                      onBlur={() => setTypingField(false)}
+                      placeholder="081234567890"
+                      autoComplete="tel"
+                      inputMode="numeric"
+                      spellCheck={false}
+                      error={fieldError.phone}
+                    />
+
+                    <Field
+                      label="Password"
+                      password
+                      value={password}
+                      onChange={(e) => onEdit(setPassword, 'password')(e.target.value)}
+                      onFocus={() => setTypingField(true)}
+                      onBlur={() => setTypingField(false)}
+                      placeholder="Masukkan password"
+                      autoComplete="new-password"
+                      hint="Minimal 8 huruf atau angka."
+                      error={fieldError.password}
+                    />
+
+                    <div className="mt-0.5 rounded-2xl bg-cream px-4 py-3.5 text-[0.875rem] leading-snug text-ink">
+                      Untuk anak di bawah 13 tahun, minta <b className="font-bold">orang tua atau guru</b> membantu membuat akun.
+                    </div>
+
+                    <Button type="submit" size="lg" disabled={submitting || locked} className="mt-1 w-full text-base">
+                      {locked ? (
+                        <span className="tabular-nums">Coba lagi dalam {mmss(lockLeft)}</span>
+                      ) : submitting ? (
+                        <>
+                          <LoaderCircle className="anim-spin" aria-hidden="true" /> Mendaftarkan…
+                        </>
+                      ) : (
+                        'Daftar'
+                      )}
+                    </Button>
+                  </form>
+
+                  <div className="mt-5 flex flex-col items-center text-center">
+                    <button
+                      type="button"
+                      onClick={() => switchMode('login')}
+                      className="rounded-lg px-2 py-0.5 text-[0.9375rem] font-bold text-tiger-ink underline-offset-4 hover:underline"
+                    >
+                      Sudah punya akun? Masuk
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {netError && (
+                <div className="mt-6">
+                  <Alert tone="error" icon={<Wifi />} role="alert">
+                    Tidak bisa menghubungi server. Cek internet, lalu coba lagi.
+                  </Alert>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </section>
 
       <ForgotPasswordDialog
         open={forgotOpen}
+        defaultEmail={email}
         onClose={() => {
           setForgotOpen(false);
           forgotRef.current?.focus();
         }}
       />
+    </div>
+  );
+}
+
+/**
+ * Pemisah gelombang vertikal berlapis (oranye → krem hangat → putih) untuk tampilan Desktop.
+ */
+function DesktopWaveDivider() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-y-0 -right-px z-20 hidden w-20 select-none lg:block xl:w-28"
+    >
+      <svg viewBox="0 0 120 800" preserveAspectRatio="none" className="h-full w-full">
+        <path
+          d="M 55 0 C 5 180, 110 380, 35 580 C 0 680, 75 760, 50 800 L 120 800 L 120 0 Z"
+          fill="#FFF2E2"
+          fillOpacity="0.38"
+        />
+        <path
+          d="M 75 0 C 115 200, 20 420, 80 620 C 105 700, 45 760, 72 800 L 120 800 L 120 0 Z"
+          fill="#FFF2E2"
+          fillOpacity="0.7"
+        />
+        <path
+          d="M 92 0 C 42 190, 118 410, 68 610 C 44 705, 96 765, 86 800 L 120 800 L 120 0 Z"
+          fill="#FFFFFF"
+        />
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * Pemisah gelombang horizontal berlapis (oranye → krem hangat → putih) untuk tampilan Mobile & Tablet.
+ */
+function MobileWaveDivider() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-0 -bottom-px z-10 h-10 w-full select-none lg:hidden"
+    >
+      <svg viewBox="0 0 400 48" preserveAspectRatio="none" className="h-full w-full">
+        <path
+          d="M 0 18 C 95 44, 210 -4, 400 22 L 400 48 L 0 48 Z"
+          fill="#FFF2E2"
+          fillOpacity="0.45"
+        />
+        <path
+          d="M 0 28 C 130 4, 265 46, 400 18 L 400 48 L 0 48 Z"
+          fill="#FFFFFF"
+        />
+      </svg>
     </div>
   );
 }

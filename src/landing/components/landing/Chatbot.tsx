@@ -17,8 +17,8 @@ const POINTS: { icon: IconName; title: string; desc: string }[] = [
   },
   {
     icon: 'history',
-    title: 'Riwayat tersimpan per siswa',
-    desc: 'Setiap percakapan tersimpan di akun siswa, jadi bisa dibuka dan dilanjutkan lagi nanti.',
+    title: 'Riwayat tersimpan per pengguna',
+    desc: 'Setiap percakapan tersimpan di akun pengguna, jadi bisa dibuka dan dilanjutkan lagi nanti.',
   },
 ];
 const PROMPTS = ['Jelaskan siklus air', 'Apa itu persentase?', 'Rekomendasi materi kelas 5', 'Bantu aku latihan soal'];
@@ -119,9 +119,8 @@ export function Chatbot() {
                 {HISTORY.map((h, i) => (
                   <li
                     key={h}
-                    className={`truncate rounded-xl px-2.5 py-2 text-[11.5px] font-semibold ${
-                      i === 0 ? 'bg-white text-brand-900 shadow-[0_2px_8px_rgba(38,33,92,0.06)]' : 'text-brand-800'
-                    }`}
+                    className={`truncate rounded-xl px-2.5 py-2 text-[11.5px] font-semibold ${i === 0 ? 'bg-white text-brand-900 shadow-[0_2px_8px_rgba(38,33,92,0.06)]' : 'text-brand-800'
+                      }`}
                   >
                     {h}
                   </li>

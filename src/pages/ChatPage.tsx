@@ -82,11 +82,6 @@ export default function ChatPage() {
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
   }, [chat.messages.length, chat.sending]);
 
-  const lastFresh = [...chat.messages].reverse().find((m) => m.role === 'assistant' && m.fresh);
-  useEffect(() => {
-    if (lastFresh && settings.autoSpeak) void tts.speak(lastFresh.content);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastFresh?.id]);
   const cancelSpeech = tts.cancel;
   useEffect(() => cancelSpeech, [cancelSpeech, activeId]);
 

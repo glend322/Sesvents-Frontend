@@ -1,4 +1,4 @@
-/** Konfigurasi akun siswa. */
+/** Konfigurasi akun siswa (ADR-056: login & daftar pakai email). */
 export const AUTH = {
   /**
    * Sesi berakhir bila perangkat tidak dipakai selama ini (14 hari). Selama masih dalam batas,
@@ -12,10 +12,9 @@ export const AUTH = {
   /** Lama tombol Masuk dikunci setelah batas percobaan tercapai. */
   lockoutMs: 30 * 1000,
   /** Batas panjang masukan form (sama dengan validasi BE). */
-  maxNisLength: 30,
+  maxEmailLength: 320,
+  minPasswordLength: 8,
   maxPasswordLength: 128,
   /** Kunci penyimpanan sesi di sisi klien. */
   storageKey: 'lunar.siswa.session',
-  /** Kontak yang ditampilkan di dialog "Lupa password?". */
-  adminContact: 'wali kelas atau operator sekolah',
 } as const;

@@ -263,9 +263,46 @@ export const MATERI: Materi[] = [
     ],
     ask: 'Bagaimana cara menyapa dalam bahasa Inggris?',
   },
+  {
+    id: 'kalimat-tanya',
+    bookTitle: 'Bahasa Indonesia: Bergerak Bersama untuk SD Kelas V',
+    bookSource: 'Kemendikbudristek, 2021',
+    title: 'Kalimat Tanya dan Berita',
+    subject: 'Bahasa Indonesia',
+    grade: 5,
+    duration: '06:15',
+    summary: 'Membedakan kalimat untuk bertanya dan kalimat untuk memberi tahu informasi.',
+    tone: 'violet',
+    bg: 'from-[#f8e2dd] via-[#fdefec] to-white',
+    sections: [
+      { title: 'Kalimat tanya', caption: 'Kalimat tanya dipakai untuk bertanya. Di akhir kalimat ada tanda tanya.' },
+      { title: 'Kata tanya', caption: 'Kita memakai kata apa, siapa, kapan, dan di mana.' },
+      { title: 'Kalimat berita', caption: 'Kalimat berita memberi tahu informasi. Di akhir kalimat ada tanda titik.' },
+    ],
+    ask: 'Apa perbedaan kalimat tanya dan kalimat berita?',
+  },
+  {
+    id: 'kebersihan-diri',
+    bookTitle: 'Pendidikan Jasmani, Olahraga, dan Kesehatan untuk SD Kelas V',
+    bookSource: 'Kemendikbudristek, 2022',
+    title: 'Kebersihan dan Kesehatan Diri',
+    subject: 'Lainnya',
+    grade: 5,
+    duration: '05:25',
+    summary: 'Kebiasaan mencuci tangan, menggosok gigi, dan menjaga tubuh tetap sehat.',
+    tone: 'brand',
+    bg: 'from-[#d8eff8] via-[#ebf7fc] to-white',
+    sections: [
+      { title: 'Mencuci tangan', caption: 'Cuci tangan memakai sabun dan air mengalir sebelum makan.' },
+      { title: 'Menggosok gigi', caption: 'Gosok gigi pagi setelah sarapan dan malam sebelum tidur.' },
+      { title: 'Istirahat cukup', caption: 'Tidur tepat waktu supaya tubuh sehat dan semangat belajar.' },
+    ],
+    ask: 'Bagaimana cara menjaga kebersihan dan kesehatan diri?',
+  },
 ];
 
-export const materiById = (id: string | undefined) => MATERI.find((m) => m.id === id) ?? null;
+export const materiById = (id: string | undefined) =>
+  MATERI.find((m) => m.id === id || (id === 'pecahan-senilai' && m.id === 'pecahan')) ?? null;
 
 export const subjectLabel = (m: Materi) => `${m.subject} · Kelas ${m.grade}`;
 
