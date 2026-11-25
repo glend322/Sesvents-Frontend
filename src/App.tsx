@@ -60,6 +60,8 @@ export default function App() {
                   </ErrorBoundary>
                 }
               />
+              <Route path="/daftar" element={<Navigate to="/login?mode=register" replace />} />
+              <Route path="/register" element={<Navigate to="/login?mode=register" replace />} />
               <Route
                 element={
                   <RequireAuth>

@@ -7,9 +7,7 @@ import { Why } from './components/landing/Why';
 import { Chatbot } from './components/landing/Chatbot';
 import { HowItWorks } from './components/landing/HowItWorks';
 import { Confidence } from './components/landing/Confidence';
-import { Vocabulary } from './components/landing/Vocabulary';
 import { ForEveryone } from './components/landing/ForEveryone';
-import { Principles } from './components/landing/Principles';
 import { Closing } from './components/landing/Closing';
 
 /** Landing page publik LUNAR (rute "/"). */
@@ -43,9 +41,7 @@ export default function LandingPage() {
         <Chatbot />
         <HowItWorks />
         <Confidence />
-        <Vocabulary />
         <ForEveryone />
-        <Principles />
         <Closing />
       </main>
     </div>

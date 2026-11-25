@@ -1,8 +1,10 @@
 import { useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/auth/AuthContext';
 import { gsap, useGSAP, MOTION_OK } from '../../lib/gsap';
 import { EASE } from '../../animations/tokens';
 import { Icon, type IconName } from '../ui/Icon';
-import { LOGIN_URL, isValidAppUrl } from '../../config/links';
+import { APP_URL, LOGIN_URL, REGISTER_URL, isValidAppUrl } from '../../config/links';
 
 const STEPS: { icon: IconName; title: string; desc: string }[] = [
   {
@@ -24,6 +26,7 @@ const STEPS: { icon: IconName; title: string; desc: string }[] = [
 
 export function ForEveryone() {
   const root = useRef<HTMLElement>(null);
+  const { isAuthenticated } = useAuth();
   const loginOk = isValidAppUrl(LOGIN_URL);
 
   useGSAP(
@@ -40,20 +43,20 @@ export function ForEveryone() {
   );
 
   return (
-    <section id="untuk-semua" ref={root} className="py-20 md:py-28">
+    <section id="untuk-semua" ref={root} className="py-14 md:py-24">
       <div className="wrap">
-        <div className="grid gap-10 overflow-hidden rounded-[32px] bg-brand-50 p-6 md:grid-cols-[1.15fr_0.85fr] md:items-center md:gap-14 md:rounded-[40px] md:p-12">
+        <div className="grid gap-8 overflow-hidden rounded-[32px] bg-brand-50 p-6 md:grid-cols-[1.15fr_0.85fr] md:items-center md:gap-14 md:rounded-[40px] md:p-12">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[12px] font-bold text-brand-600">
               <Icon name="users" className="size-3.5" />
               Terbuka untuk Semua
             </p>
-            <h2 className="mt-4 text-[clamp(34px,6.4vw,58px)] font-extrabold leading-[0.98] tracking-[-0.055em]">
+            <h2 className="mt-4 text-[clamp(32px,6.4vw,56px)] font-extrabold leading-[0.98] tracking-[-0.055em]">
               Siapa pun bisa menggunakan,
               <br />
               <span className="text-brand-600">langsung mulai belajar.</span>
             </h2>
-            <ol className="mt-8 grid gap-5">
+            <ol className="mt-7 grid gap-5">
               {STEPS.map((s, i) => (
                 <li key={s.title} className="js-public-step flex gap-4">
                   <span className="relative grid size-11 shrink-0 place-items-center rounded-2xl bg-white text-brand-600">
@@ -71,36 +74,50 @@ export function ForEveryone() {
             </ol>
           </div>
 
-          {/* Mock kartu masuk/daftar (dekoratif) + tautan masuk sungguhan di bawahnya */}
-          <div>
-            <div aria-hidden="true" className="js-public-card rounded-[26px] bg-white p-6 shadow-soft">
-              <span className="text-[18px] font-extrabold tracking-[-0.03em]">Mulai Belajar</span>
-              <span className="mt-1 block text-[12px] text-muted">Buat akun gratis atau masuk kapan saja.</span>
-              <span className="js-public-field mt-5 block">
-                <span className="text-[11px] font-bold text-brand-800">Email</span>
-                <span className="mt-1 flex items-center gap-2 rounded-xl border border-line px-3 py-2.5 text-[13px] font-semibold">
-                  <Icon name="mail" className="size-4 shrink-0 text-brand-400" />
-                  <span className="truncate">nadia.putri@gmail.com</span>
-                </span>
+          {/* Kartu aksi nyata (tombol di dalamnya langsung menuju halaman Daftar / Masuk) */}
+          <div className="js-public-card rounded-[26px] bg-white p-6 shadow-soft">
+            <h3 className="text-[20px] font-extrabold tracking-[-0.03em] text-brand-950">Mulai Belajar</h3>
+            <p className="mt-1 text-[13px] leading-relaxed text-muted">
+              Buat akun baru dalam beberapa detik, atau masuk bila sudah punya akun LUNAR.
+            </p>
+            <div aria-hidden="true" className="mt-5 grid gap-2.5">
+              <span className="js-public-field flex items-center gap-2.5 rounded-xl border border-line bg-tint/50 px-3.5 py-2.5 text-[12.5px] font-semibold text-brand-800">
+                <Icon name="mail" className="size-4 shrink-0 text-brand-600" />
+                <span className="truncate">Email & nomor telepon aktif</span>
               </span>
-              <span className="js-public-field mt-3 block">
-                <span className="text-[11px] font-bold text-brand-800">Password</span>
-                <span className="mt-1 flex items-center gap-2 rounded-xl border border-line px-3 py-2.5 text-[13px] tracking-[0.3em]">
-                  <Icon name="lock" className="size-4 shrink-0 text-brand-400" /> ••••••••
-                </span>
-              </span>
-              <span className="js-public-field mt-5 flex items-center justify-center rounded-xl bg-brand-600 py-3 text-[13px] font-bold text-white">
-                Masuk / Daftar
+              <span className="js-public-field flex items-center gap-2.5 rounded-xl border border-line bg-tint/50 px-3.5 py-2.5 text-[12.5px] font-semibold text-brand-800">
+                <Icon name="shield" className="size-4 shrink-0 text-ok" />
+                <span className="truncate">Privasi terjaga · kamera tidak disimpan</span>
               </span>
             </div>
             {loginOk && (
-              <a
-                href={LOGIN_URL}
-                className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-brand-100 bg-white px-5 py-3 text-[14px] font-bold text-brand-800 transition hover:bg-brand-100"
-              >
-                Buat akun atau masuk sekarang
-                <Icon name="arrowRight" className="size-4" />
-              </a>
+              <div className="js-public-field mt-5 flex flex-col gap-2.5">
+                {isAuthenticated ? (
+                  <Link
+                    to={APP_URL}
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-bold text-white transition hover:bg-brand-800"
+                  >
+                    Lanjut ke Aplikasi
+                    <Icon name="arrowRight" className="size-4" />
+                  </Link>
+                ) : (
+                  <>
+                    <Link
+                      to={REGISTER_URL}
+                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-[14px] font-bold text-white shadow-[0_10px_22px_rgba(184,80,15,0.22)] transition hover:bg-brand-800"
+                    >
+                      Buat Akun Gratis
+                      <Icon name="arrowRight" className="size-4" />
+                    </Link>
+                    <Link
+                      to={LOGIN_URL}
+                      className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-line bg-white px-5 py-2.5 text-[13.5px] font-bold text-brand-800 transition hover:bg-brand-50"
+                    >
+                      Sudah punya akun? Masuk
+                    </Link>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CircleAlert, Clock, Info, LoaderCircle, Wifi } from 'lucide-react';
 import { TigerMascot, type MascotMood } from '@/components/mascot/TigerMascot';
@@ -35,9 +35,10 @@ export function LoginPage() {
   const { login, register, isAuthenticated, loading, endedReason, clearEndedReason } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const from = (location.state as { from?: string } | null)?.from;
 
-  const [mode, setMode] = useState<AuthMode>('login');
+  const [mode, setMode] = useState<AuthMode>(() => (searchParams.get('mode') === 'register' ? 'register' : 'login'));
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -80,8 +81,14 @@ export function LoginPage() {
     return () => window.clearInterval(id);
   }, [lockUntil]);
 
+  useEffect(() => {
+    const urlMode: AuthMode = searchParams.get('mode') === 'register' ? 'register' : 'login';
+    setMode(urlMode);
+  }, [searchParams]);
+
   const switchMode = (nextMode: 'login' | 'register') => {
     setMode(nextMode);
+    setSearchParams(nextMode === 'register' ? { mode: 'register' } : {}, { replace: true });
     setMessage(null);
     setNetError(false);
     setFieldError({});

@@ -1,6 +1,9 @@
 import { useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/auth/AuthContext';
 import { gsap, ScrollTrigger, useGSAP, MOTION_OK, REDUCED } from '../../lib/gsap';
 import { CHAT, EASE, TABLET } from '../../animations/tokens';
+import { APP_URL, LOGIN_URL } from '../../config/links';
 import { HandSkeleton } from '../ui/HandSkeleton';
 import { Icon, type IconName } from '../ui/Icon';
 import { LogoMark } from '../ui/Logo';
@@ -25,6 +28,7 @@ const PROMPTS = ['Jelaskan siklus air', 'Apa itu persentase?', 'Rekomendasi mate
 const HISTORY = ['Siklus air', 'Apa itu persentase?', 'Latihan soal pecahan'];
 export function Chatbot() {
   const root = useRef<HTMLElement>(null);
+  const { isAuthenticated } = useAuth();
   useGSAP(
     () => {
       const q = gsap.utils.selector(root);
@@ -102,6 +106,13 @@ export function Chatbot() {
               </li>
             ))}
           </ul>
+          <Link
+            to={isAuthenticated ? APP_URL : LOGIN_URL}
+            className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-2xl border border-brand-200 bg-brand-50 px-5 py-2.5 text-[13.5px] font-bold text-brand-800 transition hover:bg-brand-100"
+          >
+            Coba Tanya LUNAR
+            <Icon name="arrowRight" className="size-4" />
+          </Link>
         </div>
         {/* Mock jendela chat */}
         <div
@@ -176,7 +187,7 @@ export function Chatbot() {
                     <span className="font-bold">Siklus air</span> adalah perjalanan air yang terus berulang: air menguap,
                     menjadi awan, turun sebagai hujan, lalu meresap ke tanah.
                     <span className="mt-2 flex items-center gap-1 text-[10.5px] font-bold text-brand-600">
-                      <Icon name="volume" className="size-3" /> Dengarkan · Ulangi isyarat
+                      <Icon name="sparkles" className="size-3" /> Salin · Sederhanakan · Caption
                     </span>
                   </span>
                 </div>

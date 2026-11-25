@@ -40,15 +40,15 @@ export function Why() {
     { scope: root },
   );
   return (
-    <section id="tentang" ref={root} className="py-16 md:py-24">
+    <section id="tentang" ref={root} className="py-12 md:py-22">
       <div className="wrap">
         <p className="js-why-eyebrow text-[10.5px] font-extrabold uppercase tracking-[0.16em] text-brand-600">Kenapa ini penting</p>
-        <h2 className="js-why-title mt-3 max-w-[860px] text-[clamp(34px,6.4vw,62px)] font-extrabold leading-[1] tracking-[-0.055em]">
+        <h2 className="js-why-title mt-3 max-w-[860px] text-[clamp(32px,6.4vw,60px)] font-extrabold leading-[1] tracking-[-0.055em]">
           Semua orang berhak belajar dengan cara yang <span className="text-brand-600">paling mereka pahami.</span>
         </h2>
-        <ul className="mt-10 grid gap-3 md:mt-14 md:grid-cols-3 md:gap-4">
+        <ul className="mt-8 grid gap-3 md:mt-12 md:grid-cols-3 md:gap-4">
           {POINTS.map((p) => (
-            <li key={p.title} className="js-why-point rounded-[26px] border border-brand-100 bg-brand-50 p-6 md:p-7">
+            <li key={p.title} className="js-why-point rounded-[24px] border border-brand-100 bg-brand-50 p-5 md:rounded-[26px] md:p-7">
               <span className="grid size-11 place-items-center rounded-2xl bg-white text-brand-600">
                 <Icon name={p.icon} className="size-5" />
               </span>

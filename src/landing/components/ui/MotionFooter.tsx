@@ -1,6 +1,8 @@
 import { forwardRef, useEffect, useRef, type AnchorHTMLAttributes, type ButtonHTMLAttributes, type ElementType, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/auth/AuthContext';
 import { gsap, MOTION_OK, useGSAP } from '../../lib/gsap';
-import { isValidAppUrl, LOGIN_URL } from '../../config/links';
+import { APP_URL, isValidAppUrl, LOGIN_URL, REGISTER_URL } from '../../config/links';
 import { Logo } from './Logo';
 
 /**
@@ -18,7 +20,7 @@ const MARQUEE = [
   'Privasi pengguna terjaga',
 ];
 
-type MagneticProps = ButtonHTMLAttributes<HTMLButtonElement> & AnchorHTMLAttributes<HTMLAnchorElement> & { as?: ElementType; children: ReactNode };
+type MagneticProps = ButtonHTMLAttributes<HTMLButtonElement> & AnchorHTMLAttributes<HTMLAnchorElement> & { as?: ElementType; to?: string; children: ReactNode };
 
 /** Tombol yang sedikit tertarik ke arah kursor (hanya pointer presisi + motion diizinkan). */
 const Magnetic = forwardRef<HTMLElement, MagneticProps>(function Magnetic({ as: Tag = 'button', className = '', children, ...props }, forwarded) {
@@ -61,7 +63,8 @@ const PILL =
 
 export function MotionFooter() {
   const wrap = useRef<HTMLDivElement>(null);
-  const loginHref = isValidAppUrl(LOGIN_URL) ? LOGIN_URL : '#';
+  const { isAuthenticated } = useAuth();
+  const loginOk = isValidAppUrl(LOGIN_URL);
 
   useGSAP(
     () => {
@@ -122,18 +125,29 @@ export function MotionFooter() {
           </p>
           <div className="js-mf-reveal mt-9 flex w-full flex-col items-center gap-4">
             <div className="flex flex-wrap justify-center gap-3">
-              <Magnetic as="a" href={loginHref} className="inline-flex items-center gap-2 rounded-full bg-brand-900 px-8 py-4 text-[15px] font-bold text-white shadow-[0_18px_40px_-14px_rgba(38,33,92,0.55)] hover:bg-brand-800">
-                Mulai belajar sekarang <span aria-hidden="true">→</span>
-              </Magnetic>
-              <Magnetic as="a" href="#untuk-semua" className={`${PILL} px-8 py-4 text-[15px] font-bold text-brand-900`}>
-                Terbuka untuk umum
-              </Magnetic>
+              {loginOk ? (
+                isAuthenticated ? (
+                  <Magnetic as={Link} to={APP_URL} className="inline-flex items-center gap-2 rounded-full bg-brand-900 px-8 py-4 text-[15px] font-bold text-white shadow-[0_18px_40px_-14px_rgba(38,33,92,0.55)] hover:bg-brand-800">
+                    Buka aplikasi sekarang <span aria-hidden="true">→</span>
+                  </Magnetic>
+                ) : (
+                  <>
+                    <Magnetic as={Link} to={LOGIN_URL} className="inline-flex items-center gap-2 rounded-full bg-brand-900 px-8 py-4 text-[15px] font-bold text-white shadow-[0_18px_40px_-14px_rgba(38,33,92,0.55)] hover:bg-brand-800">
+                      Masuk & mulai belajar <span aria-hidden="true">→</span>
+                    </Magnetic>
+                    <Magnetic as={Link} to={REGISTER_URL} className={`${PILL} px-8 py-4 text-[15px] font-bold text-brand-900`}>
+                      Buat akun gratis
+                    </Magnetic>
+                  </>
+                )
+              ) : null}
             </div>
             <div className="flex flex-wrap justify-center gap-2.5">
               {[
                 ['Fitur', '#fitur'],
+                ['Chatbot', '#chatbot'],
                 ['Cara kerja', '#cara-kerja'],
-                ['Kosakata', '#kosakata'],
+                ['Akurasi AI', '#keyakinan'],
               ].map(([label, href]) => (
                 <Magnetic key={href} as="a" href={href} className={`${PILL} px-5 py-2.5 text-[13px] font-semibold text-muted hover:text-brand-900`}>
                   {label}
