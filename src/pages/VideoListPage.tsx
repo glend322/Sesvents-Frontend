@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { AlignJustify, Bookmark, Check, ChevronLeft, ChevronRight, MessageSquarePlus, Pencil, Play, Search, X } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import { Avatar } from '@/auth/components/Avatar';
@@ -217,7 +217,7 @@ export default function VideoListPage() {
                       <span className="block text-[0.9375rem] font-extrabold text-ink">{item.label}</span>
                       <span className="mt-0.5 block text-xs text-muted">
                         {item.kind === 'video'
-                          ? 'Putar langsung video beserta takarir BISINDO'
+                          ? 'Putar langsung video beserta caption BISINDO'
                           : item.kind === 'summary'
                             ? 'Buat rangkuman poin penting dengan bahasa mudah'
                             : 'Kerjakan latihan singkat interaktif bersama LUNAR'}
@@ -258,7 +258,7 @@ export default function VideoListPage() {
               Konten Pembelajaran
             </h1>
             <p className="mt-1 hidden text-[0.9375rem] text-ink-2 sm:block">
-              Video pelajaran dengan bahasa isyarat BISINDO & takarir interaktif
+              Video pelajaran dengan bahasa isyarat BISINDO & caption interaktif
             </p>
           </div>
 
@@ -373,32 +373,41 @@ export default function VideoListPage() {
 
         {/* Filter mata pelajaran: scroll horizontal di HP, tampil utuh di Desktop */}
         {tab === 'lunar' && (
-          <div
-            role="radiogroup"
-            aria-label="Filter mata pelajaran"
-            className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:-mx-8 md:px-8 lg:order-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0"
-          >
-            {MATERI_FILTERS.map((f) => {
-              const active = filter === f;
-              return (
-                <button
-                  key={f}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => setFilter(f)}
-                  className={cn(
-                    'shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 text-[0.8125rem] transition-colors',
-                    active
-                      ? 'border-ink bg-ink font-extrabold text-white'
-                      : 'border-[#D8D1C5] bg-white font-bold text-ink hover:bg-white/70',
-                  )}
-                >
-                  {f}
-                </button>
-              );
-            })}
-          </div>
+          <LayoutGroup>
+            <div
+              role="radiogroup"
+              aria-label="Filter mata pelajaran"
+              className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:-mx-8 md:px-8 lg:order-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0"
+            >
+              {MATERI_FILTERS.map((f) => {
+                const active = filter === f;
+                return (
+                  <button
+                    key={f}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setFilter(f)}
+                    className={cn(
+                      'relative shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 text-[0.8125rem] transition-colors',
+                      active
+                        ? 'border-ink font-extrabold text-white'
+                        : 'border-[#D8D1C5] bg-white font-bold text-ink hover:bg-white/70',
+                    )}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="materi-filter-pill"
+                        className="absolute inset-0 rounded-full bg-ink"
+                        transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                      />
+                    )}
+                    <span className="relative">{f}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </LayoutGroup>
         )}
       </div>
 
@@ -420,7 +429,13 @@ export default function VideoListPage() {
             </div>
 
             {filtered.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-[#D8D1C5] bg-white/70 px-6 py-12 text-center">
+              <motion.div
+                key="empty-materi"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                className="rounded-3xl border border-dashed border-[#D8D1C5] bg-white/70 px-6 py-12 text-center"
+              >
                 <p className="text-base font-extrabold text-ink">Materi tidak ditemukan</p>
                 <p className="mt-1 text-sm text-muted">Coba kata kunci lain atau ubah filter mata pelajaran.</p>
                 <button
@@ -433,73 +448,98 @@ export default function VideoListPage() {
                 >
                   Tampilkan semua materi
                 </button>
-              </div>
+              </motion.div>
             ) : (
               <>
-                {/* Tampilan HP (< sm): daftar ringkas seperti semula */}
-                <ul className="divide-y divide-line sm:hidden">
-                  {filtered.map((item) => {
-                    const isSaved = store.isSaved(item.id) || store.isSaved(item.videoId);
-                    return (
-                      <li key={item.id} className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openDetail(item.id)}
-                          className="group flex min-w-0 flex-1 items-start gap-3.5 py-3.5 text-left transition-colors hover:bg-white/40"
+                {/* Tampilan HP (< sm): daftar ringkas dengan transisi halus antar kategori */}
+                <motion.ul layout className="divide-y divide-line sm:hidden">
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    {filtered.map((item) => {
+                      const isSaved = store.isSaved(item.id) || store.isSaved(item.videoId);
+                      return (
+                        <motion.li
+                          key={item.id}
+                          layout
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.16, ease: 'easeIn' } }}
+                          transition={{
+                            layout: { type: 'spring', stiffness: 360, damping: 32 },
+                            opacity: { duration: 0.22 },
+                            y: { duration: 0.26, ease: [0.22, 1, 0.36, 1] },
+                          }}
+                          className="flex items-center gap-2 bg-sand"
                         >
-                          <CardThumbnail kind={item.thumb} />
-                          <div className="min-w-0 flex-1 pt-0.5">
-                            <div className="flex flex-wrap items-baseline gap-1.5">
-                              <span className="text-[1rem] font-extrabold leading-snug text-ink group-hover:underline">
-                                {item.title}
-                              </span>
-                              {item.isNew && (
-                                <span className="text-[0.6875rem] font-extrabold uppercase tracking-[0.04em] text-tiger-ink">
-                                  BARU
+                          <button
+                            type="button"
+                            onClick={() => openDetail(item.id)}
+                            className="group flex min-w-0 flex-1 items-start gap-3.5 py-3.5 text-left transition-colors hover:bg-white/40"
+                          >
+                            <CardThumbnail kind={item.thumb} />
+                            <div className="min-w-0 flex-1 pt-0.5">
+                              <div className="flex flex-wrap items-baseline gap-1.5">
+                                <span className="text-[1rem] font-extrabold leading-snug text-ink group-hover:underline">
+                                  {item.title}
                                 </span>
-                              )}
+                                {item.isNew && (
+                                  <span className="text-[0.6875rem] font-extrabold uppercase tracking-[0.04em] text-tiger-ink">
+                                    BARU
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-0.5 text-[0.8125rem] text-ink-2">{item.cardMeta}</p>
+                              <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-ok-soft px-2.5 py-0.5 text-[0.75rem] font-extrabold text-ok-ink">
+                                <GreenCheckIcon className="size-3.5 shrink-0" />
+                                <span>Tim LUNAR</span>
+                              </span>
                             </div>
-                            <p className="mt-0.5 text-[0.8125rem] text-ink-2">{item.cardMeta}</p>
-                            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-ok-soft px-2.5 py-0.5 text-[0.75rem] font-extrabold text-ok-ink">
-                              <GreenCheckIcon className="size-3.5 shrink-0" />
-                              <span>Tim LUNAR</span>
-                            </span>
-                          </div>
-                        </button>
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => store.toggleSaved(item.id)}
-                          aria-pressed={isSaved}
-                          aria-label={isSaved ? `Hapus ${item.title} dari simpanan` : `Simpan ${item.title}`}
-                          title={isSaved ? 'Tersimpan di Materi Saya' : 'Simpan ke Materi Saya'}
-                          className={cn(
-                            'grid size-10 shrink-0 place-items-center rounded-xl transition-colors',
-                            isSaved ? 'bg-cream text-tiger-ink' : 'text-muted hover:bg-white hover:text-ink',
-                          )}
-                        >
-                          <Bookmark className="size-5" fill={isSaved ? 'currentColor' : 'none'} aria-hidden="true" />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                          <button
+                            type="button"
+                            onClick={() => store.toggleSaved(item.id)}
+                            aria-pressed={isSaved}
+                            aria-label={isSaved ? `Hapus ${item.title} dari simpanan` : `Simpan ${item.title}`}
+                            title={isSaved ? 'Tersimpan di Materi Saya' : 'Simpan ke Materi Saya'}
+                            className={cn(
+                              'grid size-10 shrink-0 place-items-center rounded-xl transition-colors',
+                              isSaved ? 'bg-cream text-tiger-ink' : 'text-muted hover:bg-white hover:text-ink',
+                            )}
+                          >
+                            <Bookmark className="size-5" fill={isSaved ? 'currentColor' : 'none'} aria-hidden="true" />
+                          </button>
+                        </motion.li>
+                      );
+                    })}
+                  </AnimatePresence>
+                </motion.ul>
 
-                {/* Tampilan Tablet & Desktop (≥ sm): Grid Kartu 2–3 Kolom sesuai Mockup */}
-                <ul className="hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-3">
-                  {filtered.map((item) => {
-                    const isSaved = store.isSaved(item.id) || store.isSaved(item.videoId);
-                    return (
-                      <li
-                        key={item.id}
-                        className="group relative flex flex-col rounded-[22px] border border-[#E6DFD3] bg-white p-3.5 shadow-[0_4px_18px_rgba(31,27,22,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-soft"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => openDetail(item.id)}
-                          className="flex flex-1 flex-col text-left focus:outline-none"
+                {/* Tampilan Tablet & Desktop (≥ sm): Grid Kartu 2–3 Kolom dengan animasi perpindahan halus */}
+                <motion.ul layout className="hidden gap-5 sm:grid sm:grid-cols-2 lg:grid-cols-3">
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    {filtered.map((item) => {
+                      const isSaved = store.isSaved(item.id) || store.isSaved(item.videoId);
+                      return (
+                        <motion.li
+                          key={item.id}
+                          layout
+                          initial={{ opacity: 0, y: 14, scale: 0.97 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.16, ease: 'easeIn' } }}
+                          whileHover={{ y: -2 }}
+                          transition={{
+                            layout: { type: 'spring', stiffness: 360, damping: 30 },
+                            opacity: { duration: 0.24 },
+                            y: { duration: 0.26, ease: [0.22, 1, 0.36, 1] },
+                            scale: { duration: 0.22 },
+                          }}
+                          className="group relative flex flex-col rounded-[22px] border border-[#E6DFD3] bg-white p-3.5 shadow-[0_4px_18px_rgba(31,27,22,0.04)] transition-[border-color,box-shadow] duration-200 hover:border-brand-200 hover:shadow-soft"
                         >
-                          <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl">
+                          <button
+                            type="button"
+                            onClick={() => openDetail(item.id)}
+                            className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl text-left focus:outline-none"
+                          >
                             <HeroIllustration kind={item.thumb} />
                             {item.isNew && (
                               <span className="absolute left-2.5 top-2.5 rounded-full bg-tiger px-2.5 py-0.5 text-[0.6875rem] font-extrabold uppercase tracking-[0.05em] text-white shadow-sm">
@@ -509,16 +549,40 @@ export default function VideoListPage() {
                             <span className="absolute bottom-2.5 right-2.5 rounded-lg bg-ink/85 px-2 py-0.5 text-xs font-extrabold tabular-nums text-white">
                               {item.duration}
                             </span>
+                          </button>
+
+                          <div className="mt-3.5 flex flex-1 items-start justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openDetail(item.id)}
+                              className="min-w-0 flex-1 text-left focus:outline-none"
+                            >
+                              <h3 className="text-[1.0625rem] font-extrabold leading-snug tracking-[-0.02em] text-ink group-hover:text-tiger-ink">
+                                {item.title}
+                              </h3>
+                              <p className="mt-1 text-[0.8125rem] text-ink-2">{item.cardMeta}</p>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => store.toggleSaved(item.id)}
+                              aria-pressed={isSaved}
+                              aria-label={isSaved ? `Hapus ${item.title} dari simpanan` : `Simpan ${item.title}`}
+                              title={isSaved ? 'Tersimpan di Materi Saya' : 'Simpan ke Materi Saya'}
+                              className={cn(
+                                '-mr-1 -mt-1 grid size-9 shrink-0 place-items-center rounded-xl transition-colors',
+                                isSaved ? 'bg-cream text-tiger-ink' : 'text-muted hover:bg-sand hover:text-ink',
+                              )}
+                            >
+                              <Bookmark className="size-4" fill={isSaved ? 'currentColor' : 'none'} aria-hidden="true" />
+                            </button>
                           </div>
 
-                          <div className="mt-3.5 flex-1 pr-9">
-                            <h3 className="text-[1.0625rem] font-extrabold leading-snug tracking-[-0.02em] text-ink group-hover:text-tiger-ink">
-                              {item.title}
-                            </h3>
-                            <p className="mt-1 text-[0.8125rem] text-ink-2">{item.cardMeta}</p>
-                          </div>
-
-                          <div className="mt-3.5 flex w-full items-center justify-between pt-1">
+                          <button
+                            type="button"
+                            onClick={() => openDetail(item.id)}
+                            className="mt-3.5 flex w-full items-center justify-between pt-1 text-left focus:outline-none"
+                          >
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-ok-soft px-2.5 py-0.5 text-[0.75rem] font-extrabold text-ok-ink">
                               <GreenCheckIcon className="size-3.5 shrink-0" />
                               <span>Tim LUNAR</span>
@@ -527,26 +591,12 @@ export default function VideoListPage() {
                               <span>Mulai</span>
                               <ChevronRight className="size-4" aria-hidden="true" />
                             </span>
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => store.toggleSaved(item.id)}
-                          aria-pressed={isSaved}
-                          aria-label={isSaved ? `Hapus ${item.title} dari simpanan` : `Simpan ${item.title}`}
-                          title={isSaved ? 'Tersimpan di Materi Saya' : 'Simpan ke Materi Saya'}
-                          className={cn(
-                            'absolute right-3.5 top-[calc(62.5%-0.5rem)] grid size-9 place-items-center rounded-xl transition-colors',
-                            isSaved ? 'bg-cream text-tiger-ink' : 'text-muted hover:bg-sand hover:text-ink',
-                          )}
-                        >
-                          <Bookmark className="size-4" fill={isSaved ? 'currentColor' : 'none'} aria-hidden="true" />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                          </button>
+                        </motion.li>
+                      );
+                    })}
+                  </AnimatePresence>
+                </motion.ul>
               </>
             )}
           </motion.div>
